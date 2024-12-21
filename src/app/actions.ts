@@ -6,6 +6,7 @@ import { ParsedSignalInput, Signal } from "@/types/signals";
 import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
 import { eq } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
+import { formatPrice } from "@/lib/utils";
 
 export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
   try {
@@ -16,13 +17,15 @@ export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
       await handleRateLimit(); // Rate limit our Binance API calls
       const currentPrice = await getCurrentPrice(signalData.coinPair);
       
-      const [signal] = await db.insert(signals).values({
+      const normalizedSignal = {
         ...signalData.parsed,
-        currentPrice,
+        currentPrice: Number(formatPrice(currentPrice)),
         dateAdded: Date.now(),
         lastPriceUpdate: Date.now(),
         isActive: true,
-      }).returning();
+      };
+
+      const [signal] = await db.insert(signals).values(normalizedSignal).returning();
 
       // Insert take profits without id field
       if (signalData.parsed.takeProfits.length > 0) {
@@ -30,7 +33,7 @@ export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
           signalData.parsed.takeProfits.map(tp => ({
             signalId: signal.id,
             level: tp.level,
-            price: tp.price,
+            price: Number(formatPrice(tp.price)),
             hit: false,
             hitDate: null
           }))
@@ -49,8 +52,17 @@ export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
 
 export async function updateSignal(id: number, data: Partial<Signal>) {
   try {
+    const normalizedData = Object.fromEntries(
+      Object.entries(data).map(([key, value]) => {
+        if (["entryLow", "entryHigh", "currentPrice", "stopLoss"].includes(key) && typeof value === "number") {
+          return [key, Number(formatPrice(value))];
+        }
+        return [key, value];
+      })
+    );
+
     const [updated] = await db.update(signals)
-      .set(data)
+      .set(normalizedData)
       .where(eq(signals.id, id))
       .returning();
     return updated;
@@ -76,9 +88,11 @@ export async function refreshPrices(signalsToUpdate: Signal[]) {
       await handleRateLimit();
       const currentPrice = await getCurrentPrice(signal.coinPair);
       
+      const newPrice = Number(formatPrice(currentPrice));
+
       await db.update(signals)
         .set({ 
-          currentPrice,
+          currentPrice: newPrice,
           lastPriceUpdate: Date.now()
         })
         .where(eq(signals.id, signal.id));

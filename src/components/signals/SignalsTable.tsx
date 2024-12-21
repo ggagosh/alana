@@ -2,6 +2,16 @@
 
 import { Signal } from "@/types/signals";
 import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  getSortedRowModel,
+  SortingState,
+  ColumnFiltersState,
+  getFilteredRowModel,
+} from "@tanstack/react-table";
+import {
   Table,
   TableBody,
   TableCell,
@@ -9,9 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useState } from "react";
 import { formatDistance } from "date-fns";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,99 +29,363 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Eye, RefreshCw, Trash2 } from "lucide-react";
-import { deleteSignal, updateSignal } from "@/app/actions";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MoreHorizontal, ArrowUpDown, Search, RefreshCw } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SignalsTableProps {
   signals: Signal[];
+  onRefreshPrices?: () => Promise<void>;
+  onDeleteSignal?: (id: number) => Promise<void>;
+  onArchiveSignal?: (id: number) => Promise<void>;
 }
 
-export function SignalsTable({ signals }: SignalsTableProps) {
-  const router = useRouter();
+export function SignalsTable({ 
+  signals, 
+  onRefreshPrices,
+  onDeleteSignal,
+  onArchiveSignal
+}: SignalsTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this signal?")) return;
-    await deleteSignal(id);
-    router.refresh();
-  };
+  const columns: ColumnDef<Signal>[] = [
+    {
+      accessorKey: "coinPair",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Pair
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <div className="font-medium">{row.getValue("coinPair")}</div>
+          {!row.original.isActive && (
+            <Badge variant="secondary" className="text-xs">Archived</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "entryRange",
+      header: "Entry",
+      cell: ({ row }) => (
+        <div className="font-mono">
+          {formatPrice(row.original.entryLow)} - {formatPrice(row.original.entryHigh)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "currentPrice",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Current
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        const current = row.getValue("currentPrice") as number;
+        const entryLow = row.original.entryLow;
+        const entryHigh = row.original.entryHigh;
+        const isInRange = current >= entryLow && current <= entryHigh;
+        const changeFromEntry = ((current - entryLow) / entryLow) * 100;
+        const lastUpdate = row.original.lastPriceUpdate;
 
-  const handleToggleActive = async (signal: Signal) => {
-    await updateSignal(signal.id, { isActive: !signal.isActive });
-    router.refresh();
+        return (
+          <div className="font-mono space-y-1">
+            <div className="flex items-center gap-2">
+              <div>{formatPrice(current)}</div>
+              {lastUpdate && (
+                <div className="text-xs text-muted-foreground">
+                  ({formatDistance(lastUpdate, Date.now(), { addSuffix: true })})
+                </div>
+              )}
+            </div>
+            <div
+              className={cn(
+                "text-xs",
+                changeFromEntry > 0
+                  ? "text-green-500"
+                  : changeFromEntry < 0
+                  ? "text-red-500"
+                  : "text-muted-foreground"
+              )}
+            >
+              {changeFromEntry > 0 ? "+" : ""}
+              {changeFromEntry.toFixed(2)}%
+            </div>
+            {isInRange && (
+              <Badge variant="outline" className="text-xs">
+                In Range
+              </Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "takeProfits",
+      header: "Take Profits",
+      cell: ({ row }) => {
+        const tps = row.original.takeProfits;
+        if (!tps?.length) return null;
+
+        const hitCount = tps.filter((tp) => tp.hit).length;
+        const totalTPs = tps.length;
+        const firstTP = tps[0];
+        const lastTP = tps[tps.length - 1];
+        const current = row.getValue("currentPrice") as number;
+        const nextTP = tps.find((tp) => !tp.hit && tp.price > current);
+        const progress = (hitCount / totalTPs) * 100;
+
+        return (
+          <div className="space-y-1">
+            <div className="font-mono">
+              {formatPrice(firstTP.price)} → {formatPrice(lastTP.price)}
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant={hitCount > 0 ? "default" : "outline"}>
+                {hitCount}/{totalTPs} Hit
+              </Badge>
+              {nextTP && (
+                <Badge variant="outline" className="font-mono">
+                  Next: {formatPrice(nextTP.price)}
+                </Badge>
+              )}
+            </div>
+            <div className="w-full bg-secondary h-1.5 rounded-full">
+              <div 
+                className="bg-primary h-full rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "stopLoss",
+      header: "Stop Loss",
+      cell: ({ row }) => {
+        const sl = row.getValue("stopLoss") as number;
+        const current = row.getValue("currentPrice") as number;
+        const distance = ((current - sl) / current) * 100;
+        const isNearStop = Math.abs(distance) < 5; // Within 5% of stop loss
+
+        return (
+          <div className="font-mono space-y-1">
+            <div>{formatPrice(sl)}</div>
+            <div 
+              className={cn(
+                "text-xs",
+                isNearStop ? "text-red-500" : "text-muted-foreground"
+              )}
+            >
+              {Math.abs(distance).toFixed(2)}% away
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "dateShared",
+      header: ({ column }) => {
+        return (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="p-0 hover:bg-transparent"
+          >
+            Age
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      },
+      cell: ({ row }) => {
+        return (
+          <div className="text-muted-foreground">
+            {formatDistance(row.getValue("dateShared"), Date.now())} ago
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const signal = row.original;
+
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => navigator.clipboard.writeText(signal.coinPair)}
+              >
+                Copy pair name
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                const url = `https://www.binance.com/en/trade/${signal.coinPair}`;
+                window.open(url, '_blank');
+              }}>
+                Open in Binance
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {onArchiveSignal && (
+                <DropdownMenuItem 
+                  onClick={() => onArchiveSignal(signal.id)}
+                  className="text-yellow-600"
+                >
+                  {signal.isActive ? 'Archive signal' : 'Unarchive signal'}
+                </DropdownMenuItem>
+              )}
+              {onDeleteSignal && (
+                <DropdownMenuItem 
+                  onClick={() => onDeleteSignal(signal.id)}
+                  className="text-red-600"
+                >
+                  Delete signal
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  const table = useReactTable({
+    data: signals,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: setSorting,
+    getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    initialState: {
+    },
+    state: {
+      sorting,
+      columnFilters,
+    },
+  });
+
+  const handleRefreshPrices = async () => {
+    if (!onRefreshPrices || isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshPrices();
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Pair</TableHead>
-            <TableHead>Entry</TableHead>
-            <TableHead>Current</TableHead>
-            <TableHead>Stop Loss</TableHead>
-            <TableHead>Take Profits</TableHead>
-            <TableHead>Added</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {signals.map((signal) => {
-            const firstTP = signal.takeProfits?.[0];
-            const lastTP = signal.takeProfits?.[signal.takeProfits.length - 1];
-            
-            return (
-              <TableRow key={signal.id} className={!signal.isActive ? "opacity-50" : undefined}>
-                <TableCell className="font-medium">{signal.coinPair}</TableCell>
-                <TableCell className="font-mono">
-                  {signal.entryLow} - {signal.entryHigh}
-                </TableCell>
-                <TableCell className="font-mono">{signal.currentPrice}</TableCell>
-                <TableCell className="font-mono">{signal.stopLoss}</TableCell>
-                <TableCell className="font-mono">
-                  {firstTP?.price} → {lastTP?.price}
-                  <div className="text-xs text-muted-foreground">
-                    {signal.takeProfits?.length} levels
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {formatDistance(signal.dateAdded, Date.now())} ago
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/signals/${signal.id}`} className="cursor-pointer">
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleToggleActive(signal)}>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        {signal.isActive ? "Mark as Inactive" : "Mark as Active"}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-red-600"
-                        onClick={() => handleDelete(signal.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Signal
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-1">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Filter pairs..."
+            value={(table.getColumn("coinPair")?.getFilterValue() as string) ?? ""}
+            onChange={(event) =>
+              table.getColumn("coinPair")?.setFilterValue(event.target.value)
+            }
+            className="max-w-sm"
+          />
+        </div>
+        {onRefreshPrices && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleRefreshPrices}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={cn(
+              "h-4 w-4 mr-2",
+              isRefreshing && "animate-spin"
+            )} />
+            Refresh Prices
+          </Button>
+        )}
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  No signals found.
                 </TableCell>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 }
