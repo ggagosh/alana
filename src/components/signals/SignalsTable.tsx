@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, ArrowUpDown, Search, RefreshCw } from "lucide-react";
+import { MoreHorizontal, ArrowUpDown, Search, RefreshCw, Eye } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import {
   Select,
@@ -40,10 +40,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface SignalsTableProps {
   signals: Signal[];
-  onRefreshPrices?: () => Promise<void>;
+  onRefreshPrices?: (signalsToUpdate: Signal[]) => Promise<void>;
   onDeleteSignal?: (id: number) => Promise<void>;
   onArchiveSignal?: (id: number) => Promise<void>;
 }
@@ -54,6 +56,7 @@ export function SignalsTable({
   onDeleteSignal,
   onArchiveSignal
 }: SignalsTableProps) {
+  const router = useRouter();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -152,34 +155,33 @@ export function SignalsTable({
         const tps = row.original.takeProfits;
         if (!tps?.length) return null;
 
-        const hitCount = tps.filter((tp) => tp.hit).length;
-        const totalTPs = tps.length;
+        const current = row.getValue("currentPrice") as number;
         const firstTP = tps[0];
         const lastTP = tps[tps.length - 1];
-        const current = row.getValue("currentPrice") as number;
-        const nextTP = tps.find((tp) => !tp.hit && tp.price > current);
-        const progress = (hitCount / totalTPs) * 100;
-
+        
+        // Find the TP levels we're between
+        const currentLevel = tps.findIndex(tp => tp.price > current);
+        const isAboveAll = currentLevel === -1;
+        const isBelowAll = currentLevel === 0;
+        
         return (
-          <div className="space-y-1">
-            <div className="font-mono">
+          <div className="space-y-2">
+            <div className="font-mono text-sm">
               {formatPrice(firstTP.price)} → {formatPrice(lastTP.price)}
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={hitCount > 0 ? "default" : "outline"}>
-                {hitCount}/{totalTPs} Hit
-              </Badge>
-              {nextTP && (
-                <Badge variant="outline" className="font-mono">
-                  Next: {formatPrice(nextTP.price)}
+              {isAboveAll ? (
+                <Badge className="bg-green-500">Above All TPs</Badge>
+              ) : isBelowAll ? (
+                <Badge variant="outline">Below All TPs</Badge>
+              ) : (
+                <Badge variant="secondary">
+                  Between TP{currentLevel} and TP{currentLevel + 1}
                 </Badge>
               )}
             </div>
-            <div className="w-full bg-secondary h-1.5 rounded-full">
-              <div 
-                className="bg-primary h-full rounded-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
+            <div className="text-xs text-muted-foreground">
+              Next Level: {!isAboveAll && formatPrice(tps[currentLevel]?.price)}
             </div>
           </div>
         );
@@ -245,6 +247,12 @@ export function SignalsTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <Link href={`/signals/${row.original.id}`} passHref>
+                <DropdownMenuItem>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </DropdownMenuItem>
+              </Link>
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(signal.coinPair)}
               >
@@ -296,11 +304,12 @@ export function SignalsTable({
     },
   });
 
-  const handleRefreshPrices = async () => {
+  const handleRefresh = async () => {
     if (!onRefreshPrices || isRefreshing) return;
     setIsRefreshing(true);
     try {
-      await onRefreshPrices();
+      await onRefreshPrices(signals);
+      router.refresh();
     } finally {
       setIsRefreshing(false);
     }
@@ -324,7 +333,7 @@ export function SignalsTable({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={handleRefreshPrices}
+            onClick={handleRefresh}
             disabled={isRefreshing}
           >
             <RefreshCw className={cn(

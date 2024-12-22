@@ -15,8 +15,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Trading Signals",
+  title: {
+    default: "Trading Signals",
+    template: "%s | Trading Signals"
+  },
   description: "Track and manage your trading signals",
+  icons: {
+    icon: "/favicon.ico"
+  },
 };
 
 export default function RootLayout({

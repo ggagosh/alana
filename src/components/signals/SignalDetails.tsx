@@ -12,55 +12,54 @@ export function SignalDetails({ signal }: SignalDetailsProps) {
   const isLong = signal.entryLow < signal.entryHigh;
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Signal Details</CardTitle>
+    <Card className="overflow-hidden">
+      <CardHeader className="p-4 pb-3">
+        <CardTitle className="text-base">Signal Details</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid grid-cols-2 gap-4">
+      <CardContent className="p-4 pt-0">
+        <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Direction</p>
-            <p className="text-lg font-semibold">{isLong ? 'Long' : 'Short'}</p>
+            <p className="text-muted-foreground">Direction</p>
+            <p className="font-medium">{isLong ? 'Long' : 'Short'}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Current Price</p>
-            <p className="text-lg font-semibold flex items-center gap-2">
-              {formatPrice(signal.currentPrice, signal.coinPair)}
-              <span className={`text-sm ${priceChange.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
+            <p className="text-muted-foreground">Current Price</p>
+            <p className="font-medium flex items-center gap-1">
+              {formatPrice(signal.currentPrice)}
+              <span className={`text-xs ${priceChange.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
                 {priceChange}
               </span>
             </p>
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Entry Range</p>
-            <p className="text-lg font-semibold">
-              {formatPrice(signal.entryLow, signal.coinPair)} - {formatPrice(signal.entryHigh, signal.coinPair)}
+            <p className="text-muted-foreground">Entry Range</p>
+            <p className="font-medium font-mono">
+              {formatPrice(signal.entryLow)} - {formatPrice(signal.entryHigh)}
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Stop Loss</p>
-            <p className="text-lg font-semibold">{formatPrice(signal.stopLoss, signal.coinPair)}</p>
+            <p className="text-muted-foreground">Stop Loss</p>
+            <p className="font-medium font-mono">{formatPrice(signal.stopLoss)}</p>
           </div>
-        </div>
 
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Signal Age</p>
-          <p className="text-lg font-semibold">
-            {new Date(signal.dateShared).toLocaleDateString()} 
-            ({Math.floor((Date.now() - signal.dateShared) / (1000 * 60 * 60 * 24))} days)
-          </p>
-        </div>
-
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
-          <p className="text-lg font-semibold">
-            {signal.lastPriceUpdate 
-              ? new Date(signal.lastPriceUpdate).toLocaleString()
-              : 'Never'}
-          </p>
+          <div>
+            <p className="text-muted-foreground">Signal Age</p>
+            <p className="font-medium">
+              {new Date(signal.dateShared).toLocaleDateString()} 
+              <span className="text-xs text-muted-foreground ml-1">
+                ({Math.floor((Date.now() - signal.dateShared) / (1000 * 60 * 60 * 24))}d)
+              </span>
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Last Updated</p>
+            <p className="font-medium">
+              {signal.lastPriceUpdate 
+                ? new Date(signal.lastPriceUpdate).toLocaleString()
+                : 'Never'}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,38 +1,62 @@
+import { Suspense } from "react";
 import { db } from "@/db/drizzle";
-import { signals, takeProfits } from "@/db/schema";
 import { SignalsTable } from "@/components/signals/SignalsTable";
-import { QuickAddForm } from "@/components/signals/QuickAddForm";
-import { RefreshPricesButton } from "@/components/signals/RefreshPricesButton";
-import { StatsCard } from "@/components/signals/StatsCard";
-import { addSignal, refreshPrices } from "./actions";
+import { QuickAdd } from "@/components/signals/QuickAdd";
+import { StatsCards } from "@/components/signals/StatsCards";
+import { addSignal, deleteSignal, refreshPrices, updateSignal } from "./actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default async function Home() {
+async function SignalsData() {
   const signalsData = await db.query.signals.findMany({
     with: {
       takeProfits: true,
     },
-    orderBy: (signals, { desc }) => [desc(signals.dateAdded)],
+    orderBy: (signals, { desc }) => [desc(signals.dateShared)],
   });
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      <StatsCard signals={signalsData} />
+    <>
+      <div className="container">
+        <StatsCards signals={signalsData} />
+      </div>
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Trading Signals</h1>
-        <RefreshPricesButton
+      <div className="px-4">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Trading Signals</h1>
+            <p className="text-muted-foreground">
+              Manage and track your trading signals
+            </p>
+          </div>
+          <QuickAdd onSubmit={addSignal} />
+        </div>
+
+        <SignalsTable 
           signals={signalsData}
-          onRefresh={refreshPrices}
+          onRefreshPrices={refreshPrices}
+          onDeleteSignal={deleteSignal}
         />
       </div>
+    </>
+  );
+}
 
-      <div className="grid md:grid-cols-[2fr_1fr] gap-8">
-        <SignalsTable signals={signalsData} />
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Quick Add</h2>
-          <QuickAddForm onSubmit={addSignal} />
-        </div>
-      </div>
+export default function Home() {
+  return (
+    <div className="space-y-8 py-8">
+      <Suspense 
+        fallback={
+          <div className="container">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <SignalsData />
+      </Suspense>
     </div>
   );
 }

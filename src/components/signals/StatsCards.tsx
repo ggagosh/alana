@@ -5,14 +5,14 @@ interface StatsCardProps {
   signals: Signal[];
 }
 
-export function StatsCard({ signals }: StatsCardProps) {
+export function StatsCards({ signals }: StatsCardProps) {
   const totalSignals = signals.length;
   const activeSignals = signals.filter(s => s.isActive).length;
   const successfulTPs = signals.reduce((acc, signal) => 
-    acc + signal.takeProfits.filter(tp => tp.hit).length, 0
+    acc + (signal.takeProfits || []).filter(tp => tp.hit).length, 0
   );
   const totalTPs = signals.reduce((acc, signal) => 
-    acc + signal.takeProfits.length, 0
+    acc + (signal.takeProfits || []).length, 0
   );
   
   const successRate = totalTPs > 0 

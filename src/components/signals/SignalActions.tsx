@@ -17,7 +17,7 @@ export function SignalActions({ signal }: SignalActionsProps) {
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this signal?')) return;
-    
+
     setIsDeleting(true);
     try {
       await deleteSignal(signal.id);
@@ -28,32 +28,8 @@ export function SignalActions({ signal }: SignalActionsProps) {
     }
   };
 
-  const handleToggleActive = async () => {
-    try {
-      await updateSignal(signal.id, { isActive: !signal.isActive });
-    } catch (error) {
-      console.error('Failed to update signal:', error);
-    }
-  };
-
   return (
     <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={handleToggleActive}
-      >
-        <XCircle className={`h-4 w-4 ${signal.isActive ? 'text-muted-foreground' : 'text-red-500'}`} />
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={() => router.push(`/signals/${signal.id}/edit`)}
-      >
-        <Pencil className="h-4 w-4" />
-      </Button>
-      
       <Button
         variant="outline"
         size="icon"

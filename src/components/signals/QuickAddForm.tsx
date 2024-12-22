@@ -96,7 +96,7 @@ export function QuickAddForm({ onSubmit }: QuickAddFormProps) {
         placeholder={`Paste your signals here...\n\nExample format:\nGALABTC\n\nENTRY: 0.00000034 - 0.00000041\nCP: 0.00000039\n\nTP1: 0.00000049\nTP2: 0.00000064\n...\n\nSTOP: Close weekly below 0.00000030\n\nSHARED: 20-Dec-2024`}
         value={text}
         onChange={(e) => handleTextChange(e.target.value)}
-        className="min-h-[200px] font-mono text-sm"
+        className="min-h-[200px] font-mono text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
       />
       
       {parseError && (
