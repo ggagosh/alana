@@ -3,7 +3,7 @@ import { db } from "@/db/drizzle";
 import { SignalsTable } from "@/components/signals/SignalsTable";
 import { QuickAdd } from "@/components/signals/QuickAdd";
 import { StatsCards } from "@/components/signals/StatsCards";
-import { addSignal, deleteSignal, refreshPrices, updateSignal } from "./actions";
+import { addSignal, deleteSignal, refreshPrices } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 async function SignalsData() {

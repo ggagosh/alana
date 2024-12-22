@@ -9,7 +9,7 @@ export interface Signal {
   dateAdded: number;
   lastPriceUpdate: number | null;
   isActive: boolean;
-  takeProfits?: TakeProfit[];
+  takeProfits: TakeProfit[];
 }
 
 export interface TakeProfit {
@@ -18,18 +18,4 @@ export interface TakeProfit {
   price: number;
   hit: boolean;
   hitDate: number | null;
-}
-
-export interface ParsedSignalInput {
-  coinPair: string;
-  text: string;
-  parsed: {
-    coinPair: string;
-    entryLow: number;
-    entryHigh: number;
-    currentPrice: number;
-    stopLoss: number;
-    dateShared: number;
-    takeProfits: Array<Omit<TakeProfit, 'id'>>;
-  };
 }

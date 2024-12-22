@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, ArrowUpDown, Search, RefreshCw, Eye } from "lucide-react";
+import { Eye, ExternalLink, Copy, MoreHorizontal, Trash2, RefreshCw, Search, ArrowUpDown } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import {
   Select,
@@ -242,7 +242,6 @@ export function SignalsTable({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
-                <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -256,12 +255,14 @@ export function SignalsTable({
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(signal.coinPair)}
               >
+                <Copy className="mr-2 h-4 w-4" />
                 Copy pair name
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 const url = `https://www.binance.com/en/trade/${signal.coinPair}`;
                 window.open(url, '_blank');
               }}>
+                <ExternalLink className="mr-2 h-4 w-4" />
                 Open in Binance
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -278,6 +279,7 @@ export function SignalsTable({
                   onClick={() => onDeleteSignal(signal.id)}
                   className="text-red-600"
                 >
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete signal
                 </DropdownMenuItem>
               )}

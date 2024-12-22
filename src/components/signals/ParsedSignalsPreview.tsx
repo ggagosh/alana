@@ -1,63 +1,91 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ParsedSignalInput } from "@/types/signals";
+'use client';
+
+import { Card } from "@/components/ui/card";
+import { formatDistance } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { Signal } from "@/lib/schema";
 import { formatPrice } from "@/lib/utils";
 
 interface ParsedSignalsPreviewProps {
-  signals: ParsedSignalInput[];
+  signals: Partial<Signal>[];
+}
+
+// Helper to calculate percentage difference
+function calculatePercentage(current: number, target: number): number {
+  return ((target - current) / current) * 100;
 }
 
 export function ParsedSignalsPreview({ signals }: ParsedSignalsPreviewProps) {
-  if (signals.length === 0) {
-    return null;
-  }
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Preview ({signals.length} signals)</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {signals.map((signal, index) => (
-          <div key={index} className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="font-semibold">{signal.coinPair}</h3>
-              <span className="text-sm text-muted-foreground">
-                {signal.parsed.entryLow < signal.parsed.entryHigh ? 'Long' : 'Short'}
-              </span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="text-muted-foreground">Entry Range:</span>
-                <p>
-                  {formatPrice(signal.parsed.entryLow, signal.coinPair)} - 
-                  {formatPrice(signal.parsed.entryHigh, signal.coinPair)}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Stop Loss:</span>
-                <p>{formatPrice(signal.parsed.stopLoss, signal.coinPair)}</p>
-              </div>
-            </div>
+    <Card className="p-4">
+      <h3 className="font-medium mb-4">Preview ({signals.length} signal{signals.length !== 1 ? 's' : ''})</h3>
+      <ul className="space-y-4">
+        {signals.map((signal, index) => {
+          if (!signal.currentPrice || !signal.stopLoss) return null;
+          const risk = calculatePercentage(signal.currentPrice, signal.stopLoss);
 
-            <div>
-              <span className="text-sm text-muted-foreground">Take Profits:</span>
-              <div className="grid grid-cols-4 gap-2 mt-1">
-                {signal.parsed.takeProfits.map((tp, tpIndex) => (
-                  <div key={tpIndex} className="text-sm">
-                    <span className="text-muted-foreground">TP{tp.level}:</span>
-                    <p>{formatPrice(tp.price, signal.coinPair)}</p>
+          return (
+            <li key={index} className="space-y-3 p-4 bg-muted/50 rounded-lg">
+              <div className="flex justify-between items-center">
+                <div className="text-lg font-semibold">{signal.coinPair}</div>
+                {signal.dateShared && (
+                  <div className="text-sm text-muted-foreground">
+                    {formatDistance(signal.dateShared, Date.now())} ago
                   </div>
-                ))}
+                )}
               </div>
-            </div>
 
-            {index < signals.length - 1 && (
-              <div className="border-t border-border mt-4 pt-4" />
-            )}
-          </div>
-        ))}
-      </CardContent>
+              <div className="grid grid-cols-2 gap-x-6 text-sm">
+                <div className="space-y-1">
+                  <div className="text-muted-foreground">Entry Range</div>
+                  <div className="font-mono">
+                    {formatPrice(signal.entryLow || 0)} -
+                    <br />
+                    {formatPrice(signal.entryHigh || 0)}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-muted-foreground">Current Price</div>
+                  <div className="font-mono">{formatPrice(signal.currentPrice)}</div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="text-muted-foreground text-sm">Stop Loss</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-mono text-sm">{formatPrice(signal.stopLoss)}</div>
+                  <Badge variant={risk < -5 ? 'destructive' : 'outline'}>
+                    {Math.abs(risk).toFixed(1)}% Risk
+                  </Badge>
+                </div>
+              </div>
+
+              {signal.takeProfits && signal.takeProfits.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-muted-foreground text-sm">Take Profits</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {signal.takeProfits.map((tp) => {
+                      if (!tp.price) return null;
+                      const profit = calculatePercentage(signal.currentPrice!, tp.price);
+                      return (
+                        <div key={tp.level} className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-muted-foreground text-sm">TP{tp.level}</span>
+                            <span className="font-mono text-sm">{formatPrice(tp.price)}</span>
+                          </div>
+                          <Badge variant={profit > 10 ? 'default' : 'outline'}>
+                            {profit.toFixed(1)}%
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </Card>
   );
 }

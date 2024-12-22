@@ -2,23 +2,24 @@
 
 import { db } from "@/db/drizzle";
 import { signals, takeProfits, apiKeys } from "@/db/schema";
-import { ParsedSignalInput, Signal } from "@/types/signals";
+import { Signal } from "@/types/signals";
 import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { formatPrice } from "@/lib/utils";
+import { Signal as SignalSchema } from "@/lib/schema";
 
-export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
+export async function addSignal(data: SignalSchema) {
   try {
-    const signalsToAdd = Array.isArray(data) ? data : [data];
-    const addedSignals = [];
+    const signalsToAdd: SignalSchema[] = Array.isArray(data) ? data : [data];
+    const addedSignalIds = [];
 
     for (const signalData of signalsToAdd) {
       await handleRateLimit(); // Rate limit our Binance API calls
       const currentPrice = await getCurrentPrice(signalData.coinPair);
-      
+
       const normalizedSignal = {
-        ...signalData.parsed,
+        ...signalData,
         currentPrice: Number(formatPrice(currentPrice)),
         dateAdded: Date.now(),
         lastPriceUpdate: Date.now(),
@@ -28,9 +29,9 @@ export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
       const [signal] = await db.insert(signals).values(normalizedSignal).returning();
 
       // Insert take profits without id field
-      if (signalData.parsed.takeProfits.length > 0) {
+      if (signalData.takeProfits.length > 0) {
         await db.insert(takeProfits).values(
-          signalData.parsed.takeProfits.map(tp => ({
+          signalData.takeProfits.map(tp => ({
             signalId: signal.id,
             level: tp.level,
             price: Number(formatPrice(tp.price)),
@@ -40,10 +41,15 @@ export async function addSignal(data: ParsedSignalInput | ParsedSignalInput[]) {
         );
       }
 
-      addedSignals.push(signal);
+      addedSignalIds.push(signal.id);
     }
 
-    return addedSignals;
+    return await db.query.signals.findMany({
+      where: inArray(signals.id, addedSignalIds),
+      with: {
+        takeProfits: true,
+      },
+    });
   } catch (error) {
     console.error('Failed to add signals:', error);
     throw error;
@@ -87,11 +93,11 @@ export async function refreshPrices(signalsToUpdate: Signal[]) {
     for (const signal of signalsToUpdate) {
       await handleRateLimit();
       const currentPrice = await getCurrentPrice(signal.coinPair);
-      
+
       const newPrice = Number(formatPrice(currentPrice));
 
       await db.update(signals)
-        .set({ 
+        .set({
           currentPrice: newPrice,
           lastPriceUpdate: Date.now()
         })
@@ -106,7 +112,7 @@ export async function refreshPrices(signalsToUpdate: Signal[]) {
 export async function updateTakeProfit(id: number, hit: boolean) {
   try {
     const [updated] = await db.update(takeProfits)
-      .set({ 
+      .set({
         hit,
         hitDate: hit ? Date.now() : null
       })
