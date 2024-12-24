@@ -5,18 +5,25 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
+import { useToast } from "@/hooks/use-toast"
+import { Toaster } from "@/components/ui/toaster"
+import { REGEXP_ONLY_DIGITS } from "input-otp"
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [showOtpInput, setShowOtpInput] = useState(false)
+  const { toast } = useToast()
 
   const handleRequestOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
 
     try {
       const supabase = createClient()
@@ -32,9 +39,16 @@ export default function LoginPage() {
       }
 
       setShowOtpInput(true)
-      setMessage('Check your email for the OTP code!')
+      toast({
+        title: "OTP Sent",
+        description: "Check your email for the OTP code!",
+      })
     } catch (error) {
-      setMessage('Error sending OTP code. Please try again.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to send OTP code. Please try again.",
+      })
       console.error('Error:', error)
     } finally {
       setLoading(false)
@@ -44,7 +58,6 @@ export default function LoginPage() {
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-    setMessage(null)
 
     try {
       const supabase = createClient()
@@ -58,10 +71,18 @@ export default function LoginPage() {
         throw error
       }
 
+      toast({
+        title: "Success",
+        description: "Successfully logged in!",
+      })
       // Redirect to home page after successful verification
       window.location.href = '/'
     } catch (error) {
-      setMessage('Invalid OTP code. Please try again.')
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Invalid OTP code. Please try again.",
+      })
       console.error('Error:', error)
     } finally {
       setLoading(false)
@@ -101,21 +122,31 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleVerifyOTP} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="otp">Enter OTP Code</Label>
-              <Input
-                id="otp"
-                type="text"
-                placeholder="Enter the code sent to your email"
+              <Label htmlFor="otp" className="block w-full">
+                Enter OTP Code
+              </Label>
+              <InputOTP
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                required
-              />
+                onChange={(value) => setOtp(value)}
+                maxLength={6}
+                pattern={REGEXP_ONLY_DIGITS}
+                className="w-full"
+              >
+                <InputOTPGroup className="w-full">
+                  <InputOTPSlot index={0} className="w-full" />
+                  <InputOTPSlot index={1} className="w-full" />
+                  <InputOTPSlot index={2} className="w-full" />
+                  <InputOTPSlot index={3} className="w-full" />
+                  <InputOTPSlot index={4} className="w-full" />
+                  <InputOTPSlot index={5} className="w-full" />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <Button
               type="submit"
               className="w-full"
-              disabled={loading}
+              disabled={loading || otp.length !== 6}
             >
               {loading ? 'Verifying...' : 'Verify OTP'}
             </Button>
@@ -127,22 +158,14 @@ export default function LoginPage() {
               onClick={() => {
                 setShowOtpInput(false)
                 setOtp('')
-                setMessage(null)
               }}
             >
               Back to Email
             </Button>
           </form>
         )}
-
-        {message && (
-          <p className={`mt-4 text-center ${
-            message.includes('Error') ? 'text-red-500' : 'text-green-500'
-          }`}>
-            {message}
-          </p>
-        )}
       </div>
+      <Toaster />
     </div>
   )
 }

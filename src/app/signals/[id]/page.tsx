@@ -24,7 +24,7 @@ export default async function SignalPage({ params }: SignalPageProps) {
     redirect('/auth/login');
   }
 
-  const { id } = params;
+  const { id } = await params;
   const signalId = parseInt(id);
   if (isNaN(signalId)) notFound();
 
