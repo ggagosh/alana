@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/db/drizzle";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { signals } from "@/db/schema";
 import { SignalDetails } from "@/components/signals/SignalDetails";
 import { TakeProfitsProgress } from "@/components/signals/TakeProfitsProgress";
@@ -9,6 +9,8 @@ import { PriceChart } from "@/components/signals/PriceChart";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
+import { getUserOrThrow } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
 interface SignalPageProps {
   params: {
@@ -17,12 +19,20 @@ interface SignalPageProps {
 }
 
 export default async function SignalPage({ params }: SignalPageProps) {
-  const { id } = await params;
+  const user = await getUserOrThrow();
+  if (!user?.user) {
+    redirect('/auth/login');
+  }
+
+  const { id } = params;
   const signalId = parseInt(id);
   if (isNaN(signalId)) notFound();
 
   const signal = await db.query.signals.findFirst({
-    where: eq(signals.id, signalId),
+    where: and(
+      eq(signals.id, signalId),
+      eq(signals.userId, user.user.id)
+    ),
     with: {
       takeProfits: true,
     },

@@ -1,8 +1,10 @@
-import { pgTable, text, integer, real, serial, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, real, serial, boolean, date, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+import { authUsers } from 'drizzle-orm/supabase'
 
 export const signals = pgTable("signals", {
     id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
     dateAdded: date("date_added", { mode: "date" }).notNull(),
     lastPriceUpdate: date("last_price_update", { mode: "date" }),
     isActive: boolean("is_active").notNull().default(true),
@@ -25,12 +27,17 @@ export const takeProfits = pgTable("take_profits", {
 
 export const apiKeys = pgTable("api_keys", {
     id: serial("id").primaryKey(),
+    userId: uuid("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
     name: text("name").notNull().unique(),
     key: text("key").notNull(),
     secret: text("secret").notNull(),
     dateAdded: date("date_added", { mode: "date" }).notNull(),
     lastUsed: date("last_used", { mode: "date" }),
 }, (table) => ([]));
+
+export const usersRelations = relations(authUsers, ({ many }) => ({
+    apiKeys: many(apiKeys),
+}));
 
 export const signalsRelations = relations(signals, ({ many }) => ({
     takeProfits: many(takeProfits),
@@ -41,4 +48,8 @@ export const takeProfitsRelations = relations(takeProfits, ({ one }) => ({
         fields: [takeProfits.signalId],
         references: [signals.id],
     }),
+}));
+
+export const usersSignalsRelations = relations(authUsers, ({ many }) => ({
+    signals: many(signals),
 }));

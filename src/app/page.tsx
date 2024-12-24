@@ -4,9 +4,19 @@ import { SignalsTable } from "@/components/signals/SignalsTable";
 import { QuickAdd } from "@/components/signals/QuickAdd";
 import { deleteSignal, refreshPrices, addSignalAndRevalidate } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getUserOrThrow } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
+import { signals } from "@/db/schema";
 
 async function SignalsData() {
+  const user = await getUserOrThrow();
+  if (!user?.user) {
+    redirect('/auth/login');
+  }
+
   const signalsData = await db.query.signals.findMany({
+    where: eq(signals.userId, user.user.id),
     with: {
       takeProfits: true,
     },

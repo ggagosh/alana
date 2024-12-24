@@ -4,14 +4,25 @@ import { db } from "@/db/drizzle";
 import { signals, takeProfits, apiKeys } from "@/db/schema";
 import { Signal } from "@/types/signals";
 import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { formatPrice } from "@/lib/utils";
 import { Signal as SignalSchema } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
+import { getUserOrThrow } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+
+async function getUserIdOrRedirect() {
+  const user = await getUserOrThrow();
+  if (!user?.user) {
+    redirect('/auth/login');
+  }
+  return user.user.id;
+}
 
 export async function addSignal(data: SignalSchema) {
   try {
+    const userId = await getUserIdOrRedirect();
     const signalsToAdd: SignalSchema[] = Array.isArray(data) ? data : [data];
     const addedSignalIds = [];
 
@@ -21,6 +32,7 @@ export async function addSignal(data: SignalSchema) {
 
       const normalizedSignal = {
         ...signalData,
+        userId,
         currentPrice: Number(formatPrice(currentPrice)),
         dateAdded: new Date(),
         lastPriceUpdate: new Date(),
@@ -28,7 +40,10 @@ export async function addSignal(data: SignalSchema) {
       };
 
       const existingSignal = await db.query.signals.findFirst({
-        where: eq(signals.coinPair, signalData.coinPair)
+        where: and(
+          eq(signals.coinPair, signalData.coinPair),
+          eq(signals.userId, userId)
+        )
       });
       if (existingSignal) {
         await db.delete(signals).where(eq(signals.id, existingSignal.id));
@@ -66,6 +81,7 @@ export async function addSignal(data: SignalSchema) {
 
 export async function updateSignal(id: number, data: Partial<Signal>) {
   try {
+    const userId = await getUserIdOrRedirect();
     const normalizedData = Object.fromEntries(
       Object.entries(data).map(([key, value]) => {
         if (["entryLow", "entryHigh", "currentPrice", "stopLoss"].includes(key) && typeof value === "number") {
@@ -77,7 +93,10 @@ export async function updateSignal(id: number, data: Partial<Signal>) {
 
     const [updated] = await db.update(signals)
       .set(normalizedData)
-      .where(eq(signals.id, id))
+      .where(and(
+        eq(signals.id, id),
+        eq(signals.userId, userId)
+      ))
       .returning();
     return updated;
   } catch (error) {
@@ -88,8 +107,12 @@ export async function updateSignal(id: number, data: Partial<Signal>) {
 
 export async function deleteSignal(id: number) {
   try {
+    const userId = await getUserIdOrRedirect();
     // Take profits will be cascade deleted
-    await db.delete(signals).where(eq(signals.id, id));
+    await db.delete(signals).where(and(
+      eq(signals.id, id),
+      eq(signals.userId, userId)
+    ));
   } catch (error) {
     console.error('Failed to delete signal:', error);
     throw error;
@@ -98,10 +121,20 @@ export async function deleteSignal(id: number) {
 
 export async function refreshPrices(signalsToUpdate: Signal[]) {
   try {
+    const userId = await getUserIdOrRedirect();
     for (const signal of signalsToUpdate) {
+      // Verify signal belongs to user
+      const userSignal = await db.query.signals.findFirst({
+        where: and(
+          eq(signals.id, signal.id),
+          eq(signals.userId, userId)
+        )
+      });
+
+      if (!userSignal) continue;
+
       await handleRateLimit();
       const currentPrice = await getCurrentPrice(signal.coinPair);
-
       const newPrice = Number(formatPrice(currentPrice));
 
       await db.update(signals)
@@ -119,6 +152,19 @@ export async function refreshPrices(signalsToUpdate: Signal[]) {
 
 export async function updateTakeProfit(id: number, hit: boolean) {
   try {
+    const userId = await getUserIdOrRedirect();
+    // Verify the take profit belongs to a signal owned by the user
+    const takeProfit = await db.query.takeProfits.findFirst({
+      where: eq(takeProfits.id, id),
+      with: {
+        signal: true
+      }
+    });
+
+    if (!takeProfit || takeProfit.signal.userId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
     const [updated] = await db.update(takeProfits)
       .set({
         hit,
@@ -135,15 +181,20 @@ export async function updateTakeProfit(id: number, hit: boolean) {
 
 export async function saveApiKeys(name: string, key: string, secret: string) {
   try {
+    const userId = await getUserIdOrRedirect();
     // Encrypt sensitive data
     const encryptedKey = await encrypt(key);
     const encryptedSecret = await encrypt(secret);
 
     // Delete existing key with same name if exists
-    await db.delete(apiKeys).where(eq(apiKeys.name, name));
+    await db.delete(apiKeys).where(and(
+      eq(apiKeys.name, name),
+      eq(apiKeys.userId, userId)
+    ));
 
     // Save new key
     await db.insert(apiKeys).values({
+      userId,
       name,
       key: encryptedKey,
       secret: encryptedSecret,
@@ -159,7 +210,11 @@ export async function saveApiKeys(name: string, key: string, secret: string) {
 
 export async function getApiKeys(name: string) {
   try {
-    const keys = await db.select().from(apiKeys).where(eq(apiKeys.name, name));
+    const userId = await getUserIdOrRedirect();
+    const keys = await db.select().from(apiKeys).where(and(
+      eq(apiKeys.name, name),
+      eq(apiKeys.userId, userId)
+    ));
     if (!keys.length) return null;
 
     const key = keys[0];
@@ -178,7 +233,11 @@ export async function getApiKeys(name: string) {
 
 export async function deleteApiKeys(name: string) {
   try {
-    await db.delete(apiKeys).where(eq(apiKeys.name, name));
+    const userId = await getUserIdOrRedirect();
+    await db.delete(apiKeys).where(and(
+      eq(apiKeys.name, name),
+      eq(apiKeys.userId, userId)
+    ));
     return { success: true };
   } catch (error) {
     console.error('Failed to delete API keys:', error);
