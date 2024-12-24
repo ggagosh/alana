@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { ApiKeyForm } from "@/components/settings/ApiKeyForm";
-import { ThemeSelector } from "@/components/settings/ThemeSelector";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -13,7 +12,7 @@ export default async function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your API keys and preferences.
+          Manage your settings.
         </p>
       </div>
 
@@ -21,11 +20,6 @@ export default async function SettingsPage() {
         <div>
           <h2 className="text-xl font-semibold mb-4">API Keys</h2>
           <ApiKeyForm />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Appearance</h2>
-          <ThemeSelector />
         </div>
       </div>
     </div>
