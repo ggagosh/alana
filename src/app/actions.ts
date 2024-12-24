@@ -8,6 +8,7 @@ import { eq, inArray } from "drizzle-orm";
 import { encrypt, decrypt } from "@/lib/crypto";
 import { formatPrice } from "@/lib/utils";
 import { Signal as SignalSchema } from "@/lib/schema";
+import { revalidatePath } from "next/cache";
 
 export async function addSignal(data: SignalSchema) {
   try {
@@ -25,6 +26,13 @@ export async function addSignal(data: SignalSchema) {
         lastPriceUpdate: Date.now(),
         isActive: true,
       };
+
+      const existingSignal = await db.query.signals.findFirst({
+        where: eq(signals.coinPair, signalData.coinPair)
+      });
+      if (existingSignal) {
+        await db.delete(signals).where(eq(signals.id, existingSignal.id));
+      }
 
       const [signal] = await db.insert(signals).values(normalizedSignal).returning();
 
@@ -176,4 +184,12 @@ export async function deleteApiKeys(name: string) {
     console.error('Failed to delete API keys:', error);
     throw new Error('Failed to delete API keys');
   }
+}
+
+export async function addSignalAndRevalidate(data: SignalSchema) {
+  'use server';
+
+  const result = await addSignal(data);
+  revalidatePath('/');
+  return result;
 }

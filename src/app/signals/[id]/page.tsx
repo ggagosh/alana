@@ -17,7 +17,8 @@ interface SignalPageProps {
 }
 
 export default async function SignalPage({ params }: SignalPageProps) {
-  const signalId = parseInt(params.id);
+  const { id } = await params;
+  const signalId = parseInt(id);
   if (isNaN(signalId)) notFound();
 
   const signal = await db.query.signals.findFirst({

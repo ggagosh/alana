@@ -88,7 +88,7 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
       </DialogTrigger>
       <DialogContent className={
         cn("sm:max-w-[600px] flex flex-col", {
-          'h-[90vh]': object?.parsed || finalObject
+          'h-[90vh]': (isLoading && object?.parsed) || finalObject
         })
       }>
         <DialogHeader className="flex-shrink-0">

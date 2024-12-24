@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import { db } from "@/db/drizzle";
 import { SignalsTable } from "@/components/signals/SignalsTable";
 import { QuickAdd } from "@/components/signals/QuickAdd";
-import { StatsCards } from "@/components/signals/StatsCards";
-import { addSignal, deleteSignal, refreshPrices } from "./actions";
+import { deleteSignal, refreshPrices, addSignalAndRevalidate } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 
 async function SignalsData() {
@@ -11,15 +10,11 @@ async function SignalsData() {
     with: {
       takeProfits: true,
     },
-    orderBy: (signals, { desc }) => [desc(signals.dateShared)],
+    orderBy: (signals, { desc }) => [desc(signals.dateAdded)],
   });
 
   return (
     <>
-      <div className="container">
-        <StatsCards signals={signalsData} />
-      </div>
-
       <div className="px-4">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -28,10 +23,10 @@ async function SignalsData() {
               Manage and track your trading signals
             </p>
           </div>
-          <QuickAdd onSubmit={addSignal} />
+          <QuickAdd onSubmit={addSignalAndRevalidate} />
         </div>
 
-        <SignalsTable 
+        <SignalsTable
           signals={signalsData}
           onRefreshPrices={refreshPrices}
           onDeleteSignal={deleteSignal}
@@ -44,7 +39,7 @@ async function SignalsData() {
 export default function Home() {
   return (
     <div className="space-y-8 py-8">
-      <Suspense 
+      <Suspense
         fallback={
           <div className="container">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

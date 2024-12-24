@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { ApiKeyForm } from "@/components/settings/ApiKeyForm";
 import { ThemeSelector } from "@/components/settings/ThemeSelector";
-import { DataManagement } from "@/components/settings/DataManagement";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -27,11 +26,6 @@ export default async function SettingsPage() {
         <div>
           <h2 className="text-xl font-semibold mb-4">Appearance</h2>
           <ThemeSelector />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Data Management</h2>
-          <DataManagement />
         </div>
       </div>
     </div>
