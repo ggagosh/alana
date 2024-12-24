@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '../ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { ParsedSignalsPreview } from './ParsedSignalsPreview';
 import { cn } from '@/lib/utils';
+import { useToast } from "@/hooks/use-toast";
 
 interface QuickAddProps {
   onSubmit: (data: Signal) => Promise<Signal[]>;
@@ -18,8 +19,10 @@ interface QuickAddProps {
 export function QuickAdd({ onSubmit }: QuickAddProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [finalObject, setFinalObject] = useState<Signal | null>(null);
+  const { toast } = useToast();
 
   const {
     object,
@@ -31,16 +34,35 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
     schema: parsedSignalSchema,
     onError: (error) => {
       setError(error.message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
     },
     onFinish(result) {
       if (result.error) {
         setError(result.error.message);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error.message,
+        });
       }
 
       if (result.object?.parsed) {
         setFinalObject(result.object.parsed as Signal);
+        toast({
+          title: "Success",
+          description: "Signal parsed successfully!",
+        });
       } else {
         setError('Failed to parse signal');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to parse signal",
+        });
       }
     },
   });
@@ -54,7 +76,13 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
     try {
       submit({ prompt: text });
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to parse signal');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to parse signal';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
     }
   };
 
@@ -63,11 +91,24 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
       return;
     }
 
+    setIsAdding(true);
     try {
       await onSubmit(finalObject);
+      toast({
+        title: "Success",
+        description: "Signal added successfully!",
+      });
       handleClose();
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to add signal');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add signal';
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: errorMessage,
+      });
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -79,6 +120,7 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
     }
     setError(null);
     setFinalObject(null);
+    setIsAdding(false);
   };
 
   return (
@@ -101,7 +143,7 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
                 ref={textareaRef}
                 placeholder="Paste your signal here..."
                 rows={10}
-                disabled={isLoading}
+                disabled={isLoading || isAdding}
                 className="resize-none font-mono min-h-[200px]"
               />
               <p className="text-sm text-muted-foreground">
@@ -131,6 +173,7 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
               type="button"
               variant="outline"
               onClick={() => handleClose()}
+              disabled={isLoading || isAdding}
             >
               Cancel
             </Button>
@@ -138,15 +181,15 @@ export function QuickAdd({ onSubmit }: QuickAddProps) {
               <Button
                 type="button"
                 onClick={handleAddSignal}
-                disabled={isLoading}
+                disabled={isLoading || isAdding}
               >
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Signal
+                {(isLoading || isAdding) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isAdding ? 'Adding Signal...' : 'Add Signal'}
               </Button>
             ) : (
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || isAdding}
               >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Parse Signal
