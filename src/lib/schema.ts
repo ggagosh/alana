@@ -4,7 +4,7 @@ export const takeProfitSchema = z.object({
   level: z.number(),
   price: z.number(),
   hit: z.boolean().default(false),
-  hitDate: z.number().nullable().default(null),
+  hitDate: z.date().nullable().default(null),
 });
 
 export const signalSchema = z.object({
@@ -13,7 +13,7 @@ export const signalSchema = z.object({
   entryHigh: z.number(),
   currentPrice: z.number(),
   stopLoss: z.number(),
-  dateShared: z.number(),
+  dateShared: z.coerce.date(),
   takeProfits: z.array(takeProfitSchema),
 });
 

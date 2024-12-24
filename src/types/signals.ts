@@ -5,9 +5,9 @@ export interface Signal {
   entryHigh: number;
   currentPrice: number;
   stopLoss: number;
-  dateShared: number;
-  dateAdded: number;
-  lastPriceUpdate: number | null;
+  dateShared: Date;
+  dateAdded: Date;
+  lastPriceUpdate: Date | null;
   isActive: boolean;
   takeProfits: TakeProfit[];
 }
@@ -17,5 +17,5 @@ export interface TakeProfit {
   level: number;
   price: number;
   hit: boolean;
-  hitDate: number | null;
+  hitDate: Date | null;
 }

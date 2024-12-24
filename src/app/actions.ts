@@ -22,8 +22,8 @@ export async function addSignal(data: SignalSchema) {
       const normalizedSignal = {
         ...signalData,
         currentPrice: Number(formatPrice(currentPrice)),
-        dateAdded: Date.now(),
-        lastPriceUpdate: Date.now(),
+        dateAdded: new Date(),
+        lastPriceUpdate: new Date(),
         isActive: true,
       };
 
@@ -107,7 +107,7 @@ export async function refreshPrices(signalsToUpdate: Signal[]) {
       await db.update(signals)
         .set({
           currentPrice: newPrice,
-          lastPriceUpdate: Date.now()
+          lastPriceUpdate: new Date()
         })
         .where(eq(signals.id, signal.id));
     }
@@ -122,7 +122,7 @@ export async function updateTakeProfit(id: number, hit: boolean) {
     const [updated] = await db.update(takeProfits)
       .set({
         hit,
-        hitDate: hit ? Date.now() : null
+        hitDate: hit ? new Date() : null
       })
       .where(eq(takeProfits.id, id))
       .returning();
@@ -147,7 +147,7 @@ export async function saveApiKeys(name: string, key: string, secret: string) {
       name,
       key: encryptedKey,
       secret: encryptedSecret,
-      dateAdded: Date.now(),
+      dateAdded: new Date(),
     });
 
     return { success: true };
