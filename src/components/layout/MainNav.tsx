@@ -28,18 +28,6 @@ export function MainNav() {
           <LayoutDashboard className="h-4 w-4" />
           <span>Dashboard</span>
         </Link>
-        <Link
-          href="/settings"
-          className={cn(
-            "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
-            pathname === "/settings"
-              ? "text-primary"
-              : "text-muted-foreground"
-          )}
-        >
-          <Settings className="h-4 w-4" />
-          <span>Settings</span>
-        </Link>
       </nav>
     </div>
   );
