@@ -1,19 +1,19 @@
-import { pgTable, text, integer, real, serial, boolean, date, uuid, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, real, serial, boolean, timestamp, uuid, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { authUsers } from "drizzle-orm/supabase"
 
 export const signals = pgTable("signals", {
     id: serial("id").primaryKey(),
     userId: uuid("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
-    dateAdded: date("date_added", { mode: "date" }).notNull(),
-    lastPriceUpdate: date("last_price_update", { mode: "date" }),
+    dateAdded: timestamp("date_added", { mode: "date" }).notNull(),
+    lastPriceUpdate: timestamp("last_price_update", { mode: "date" }),
     isActive: boolean("is_active").notNull().default(true),
     coinPair: text("coin_pair").notNull(),
     entryLow: real("entry_low").notNull(),
     entryHigh: real("entry_high").notNull(),
     currentPrice: real("current_price").notNull(),
     stopLoss: real("stop_loss").notNull(),
-    dateShared: date("date_shared", { mode: "date" }).notNull(),
+    dateShared: timestamp("date_shared", { mode: "date" }).notNull(),
 }, (table) => ([]));
 
 export const takeProfits = pgTable("take_profits", {
@@ -22,7 +22,7 @@ export const takeProfits = pgTable("take_profits", {
     level: integer("level").notNull(), // 1-8
     price: real("price").notNull(),
     hit: boolean("hit").notNull().default(false),
-    hitDate: date("hit_date", { mode: "date" }),
+    hitDate: timestamp("hit_date", { mode: "date" }),
 }, (table) => ([]));
 
 export const apiKeys = pgTable("api_keys", {
@@ -31,8 +31,8 @@ export const apiKeys = pgTable("api_keys", {
     name: text("name").notNull().unique(),
     key: text("key").notNull(),
     secret: text("secret").notNull(),
-    dateAdded: date("date_added", { mode: "date" }).notNull(),
-    lastUsed: date("last_used", { mode: "date" }),
+    dateAdded: timestamp("date_added", { mode: "date" }).notNull(),
+    lastUsed: timestamp("last_used", { mode: "date" }),
 }, (table) => ([]));
 
 export const usersRelations = relations(authUsers, ({ many }) => ({
@@ -57,7 +57,7 @@ export const usersSignalsRelations = relations(authUsers, ({ many }) => ({
 export const coinPriceHistory = pgTable("coin_price_history", {
     id: serial("id").primaryKey(),
     coinPair: text("coin_pair").notNull(),
-    date: date("date", { mode: "date" }).notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
     price: real("price").notNull(),
 }, (table) => ([
     {

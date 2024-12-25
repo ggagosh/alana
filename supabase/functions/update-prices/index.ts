@@ -1,32 +1,66 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { drizzle } from 'drizzle-orm/postgres-js'
-import postgres from 'postgres'
-import * as schema from '../_shared/schema.ts'
+import * as postgres from 'https://deno.land/x/postgres@v0.17.0/mod.ts'
 
-const databaseUrl = Deno.env.get('SUPABASE_DB_URL')!;
+// Get the connection string from the environment variable "SUPABASE_DB_URL"
+const databaseUrl = Deno.env.get('SUPABASE_DB_URL')!
+
+// Create a database pool with three connections that are lazily established
+const pool = new postgres.Pool(databaseUrl, 3, true)
 
 Deno.serve(async (_req) => {
   try {
-    const client = postgres(databaseUrl, { prepare: false })
-    const db = drizzle(client, { schema });
+    // Grab a connection from the pool
+    const connection = await pool.connect()
 
-    // Get all coin pairs from signals table
-    const signals = await db.query.signals.findMany();
-
-    // Get all count prices from: https://api.binance.com/api/v3/ticker/price
-    const res = await fetch('https://api.binance.com/api/v3/ticker/price');
-    const prices: { symbol: string, price: string }[] = await res.json();
-
-    // Filter out only the coin pairs we need
-    const filteredPrices = prices.filter(price => signals.some(coinPair => coinPair.coinPair === price.symbol));
-
-    // Insert prices into coin_price_history table
-    await db.insert(schema.coinPriceHistory)
-      .values(filteredPrices.map(price => ({ coinPair: price.symbol, price: Number(price.price), date: new Date() })))
-      .onConflictDoNothing();
+    try {
+      // Run a query
+      const result = await connection.queryObject`SELECT coin_pair FROM signals`
+      const coinPairs = result.rows as { coin_pair: string }[];
 
 
-    return new Response('OK')
+      // Get the current prices
+      const res = await fetch('https://api.binance.com/api/v3/ticker/price');
+      const prices: { symbol: string, price: string }[] = await res.json();
+
+      // Get the current prices for the coin pairs
+      const currentPrices = coinPairs.map(coinPair => {
+        const price = prices.find(price => price.symbol === coinPair.coin_pair);
+
+        return {
+          coinPair: coinPair.coin_pair,
+          currentPrice: price ? parseFloat(price.price) : 0
+        }
+      });
+
+
+      // Insert the current prices into the database
+      const values = currentPrices.flatMap(price => [price.coinPair, price.currentPrice]);
+      const placeholders = currentPrices.map((_, i) => `($${i * 2 + 1}, now(), $${i * 2 + 2})`).join(',');
+      await connection.queryArray(`
+          INSERT INTO coin_price_history (coin_pair, date, price) 
+          VALUES ${placeholders}
+        `, values);
+
+
+      // Update the current prices and last_price_update in the database
+      const placeholders2 = currentPrices.map((_, i) => `$${i + 1}`).join(',');
+      const values2 = currentPrices.map(price => price.coinPair);
+
+      await connection.queryArray(`
+          UPDATE signals 
+          SET current_price = CASE coin_pair 
+              ${currentPrices.map((_, i) =>
+              `WHEN $${i + 1} THEN $${currentPrices.length + i + 1}::real`
+            ).join('\n        ')}
+          END,
+          last_price_update = now()
+          WHERE coin_pair IN (${placeholders2})
+      `, [...values2, ...currentPrices.map(price => price.currentPrice)]);
+
+      // Return the response with the correct content type header
+      return new Response('OK', { status: 200 })
+    } finally {
+      connection.release()
+    }
   } catch (err) {
     console.error(err)
 

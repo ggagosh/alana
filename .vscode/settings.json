@@ -20,6 +20,5 @@
   ],
   "[typescript]": {
     "editor.defaultFormatter": "vscode.typescript-language-features"
-  },
-  "deno.importMap": "supabase/import_map.json"
+  }
 }
