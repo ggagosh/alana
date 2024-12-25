@@ -13,8 +13,8 @@ Deno.serve(async (_req) => {
 
     try {
       // Run a query
-      const result = await connection.queryObject`SELECT coin_pair FROM signals`
-      const coinPairs = result.rows as { coin_pair: string }[];
+      const result = await connection.queryObject`SELECT id, coin_pair FROM signals`
+      const coinPairs = result.rows as { coin_pair: string, id: number }[];
 
 
       // Get the current prices
@@ -26,6 +26,7 @@ Deno.serve(async (_req) => {
         const price = prices.find(price => price.symbol === coinPair.coin_pair);
 
         return {
+          id: coinPair.id,
           coinPair: coinPair.coin_pair,
           currentPrice: price ? parseFloat(price.price) : 0
         }
@@ -49,12 +50,27 @@ Deno.serve(async (_req) => {
           UPDATE signals 
           SET current_price = CASE coin_pair 
               ${currentPrices.map((_, i) =>
-              `WHEN $${i + 1} THEN $${currentPrices.length + i + 1}::real`
-            ).join('\n        ')}
+        `WHEN $${i + 1} THEN $${currentPrices.length + i + 1}::real`
+      ).join('\n        ')}
           END,
           last_price_update = now()
           WHERE coin_pair IN (${placeholders2})
       `, [...values2, ...currentPrices.map(price => price.currentPrice)]);
+
+
+      // Now I want to update the take_profits table and set hit to true if the current price is greater than the take profit price
+      // And hit_date to now()
+      await connection.queryArray(`
+        UPDATE take_profits
+        SET 
+            hit = true,
+            hit_date = now()
+        FROM signals
+        WHERE 
+            take_profits.signal_id = signals.id 
+            AND take_profits.hit = false 
+            AND signals.current_price >= take_profits.price
+        `);
 
       // Return the response with the correct content type header
       return new Response('OK', { status: 200 })

@@ -31,19 +31,3 @@ export function calculatePriceChange(current: number, entry: number): string {
   const change = ((current - entry) / entry) * 100;
   return `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
 }
-
-export function checkTakeProfitHit(signal: Signal): void {
-  const currentPrice = signal.currentPrice;
-  
-  signal?.takeProfits?.forEach(tp => {
-    if (!tp.hit) {
-      if (
-        (signal.entryLow < signal.entryHigh && currentPrice >= tp.price) || 
-        (signal.entryLow > signal.entryHigh && currentPrice <= tp.price)
-      ) {
-        tp.hit = true;
-        tp.hitDate = new Date();
-      }
-    }
-  });
-}

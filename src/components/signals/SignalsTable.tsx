@@ -35,11 +35,71 @@ import { Eye, ExternalLink, Copy, MoreHorizontal, Trash2, RefreshCw, Search, Arr
 import { cn, formatPrice } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SignalsTableToolbar } from "./SignalsTableToolbar";
+import { Progress } from "@/components/ui/progress";
 
 interface SignalsTableProps {
   signals: Signal[];
   onDeleteSignal?: (id: number) => Promise<void>;
   onArchiveSignal?: (id: number) => Promise<void>;
+}
+
+type SignalStatus = "pre_entry" | "in_entry" | "active" | "closed";
+
+function getSignalStatus(signal: Signal): SignalStatus {
+  const current = signal.currentPrice;
+  const { entryLow, entryHigh, takeProfits } = signal;
+
+  // Check if all TPs are hit
+  const allTPsHit = takeProfits?.every(tp => tp.hit) ?? false;
+  if (allTPsHit) return "closed";
+
+  // Check if we're in entry zone
+  if (current >= entryLow && current <= entryHigh) return "in_entry";
+
+  // Check if position is active (price has been in entry zone)
+  const hasHitTPs = takeProfits?.some(tp => tp.hit) ?? false;
+  if (hasHitTPs) return "active";
+
+  // If none of the above, we're pre-entry
+  return "pre_entry";
+}
+
+function getStatusColor(status: SignalStatus): string {
+  switch (status) {
+    case "pre_entry": return "text-muted-foreground";
+    case "in_entry": return "text-yellow-500";
+    case "active": return "text-green-500";
+    case "closed": return "text-blue-500";
+  }
+}
+
+function calculatePnL(signal: Signal): number | null {
+  const hitTPs = signal.takeProfits?.filter(tp => tp.hit) ?? [];
+  if (!hitTPs.length) return null;
+
+  // Calculate average entry price
+  const entryPrice = (signal.entryLow + signal.entryHigh) / 2;
+
+  // Calculate average exit price from hit TPs
+  const avgExitPrice = hitTPs.reduce((sum, tp) => sum + tp.price, 0) / hitTPs.length;
+
+  return ((avgExitPrice - entryPrice) / entryPrice) * 100;
+}
+
+function getDistanceToNearestTP(signal: Signal): { distance: number; level: number } | null {
+  const current = signal.currentPrice;
+  const unHitTPs = signal.takeProfits?.filter(tp => !tp.hit).sort((a, b) => a.price - b.price) ?? [];
+
+  if (!unHitTPs.length) return null;
+
+  const nearestTP = unHitTPs[0];
+  const distance = ((nearestTP.price - current) / current) * 100;
+
+  return {
+    distance,
+    level: nearestTP.level
+  };
 }
 
 export function SignalsTable({
@@ -51,6 +111,8 @@ export function SignalsTable({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const uniqueCoins = Array.from(new Set(signals.map(s => s.coinPair))).sort();
 
   const columns: ColumnDef<Signal>[] = [
     {
@@ -75,6 +137,13 @@ export function SignalsTable({
           )}
         </div>
       ),
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue) {
+          return true;
+        }
+
+        return row.getValue<string>(columnId).toLowerCase().includes(filterValue.toLowerCase());
+      },
     },
     {
       accessorKey: "entryRange",
@@ -223,6 +292,105 @@ export function SignalsTable({
           </div>
         );
       },
+      filterFn: (row, columnId, columnFilters) => {
+        const filterValue = columnFilters.getFilterValue(columnId);
+        if (!filterValue) return true;
+
+        return row.getValue<Date>(columnId) >= filterValue;
+      },
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const signal = row.original;
+        const status = getSignalStatus(signal);
+        const statusColor = getStatusColor(status);
+        const pnl = calculatePnL(signal);
+        const nearestTP = getDistanceToNearestTP(signal);
+        const hitTPCount = signal.takeProfits?.filter(tp => tp.hit).length ?? 0;
+        const totalTPCount = signal.takeProfits?.length ?? 0;
+        const successRate = totalTPCount > 0 ? (hitTPCount / totalTPCount) * 100 : 0;
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge className={cn("capitalize", statusColor)}>
+                {status.replace("_", " ")}
+              </Badge>
+              {pnl !== null && (
+                <Badge variant={pnl >= 0 ? "default" : "destructive"}>
+                  {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
+                </Badge>
+              )}
+            </div>
+            
+            {nearestTP && (
+              <div className="text-sm text-muted-foreground">
+                TP{nearestTP.level}: {Math.abs(nearestTP.distance).toFixed(1)}% {nearestTP.distance >= 0 ? "above" : "below"}
+              </div>
+            )}
+            
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span>Progress</span>
+                <span>{hitTPCount}/{totalTPCount} TPs</span>
+              </div>
+              <Progress value={successRate} className="h-1" />
+              {hitTPCount > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Last hit: {signal.takeProfits
+                    .filter(tp => tp.hit)
+                    .sort((a, b) => (b.hitDate?.getTime() ?? 0) - (a.hitDate?.getTime() ?? 0))[0]
+                    ?.hitDate?.toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "signal_status_filter",
+      filterFn: (row, id, value: string[]) => {
+        if (!value?.length) return true;
+        const status = getSignalStatus(row.original);
+        return value.includes(status);
+      }
+    },
+    {
+      id: "tp_status_filter",
+      filterFn: (row, id, value: string[]) => {
+        if (!value?.length) return true;
+        const current = row.original.currentPrice;
+        const entryLow = row.original.entryLow;
+        const entryHigh = row.original.entryHigh;
+        const isInRange = current >= entryLow && current <= entryHigh;
+
+        const tps = row.original.takeProfits;
+        const currentLevel = tps?.findIndex(tp => tp.price > current) ?? -1;
+        const isAboveAll = currentLevel === -1;
+        const isBelowAll = currentLevel === 0;
+
+        const sl = row.original.stopLoss;
+        const distance = ((current - sl) / current) * 100;
+        const isNearStop = Math.abs(distance) < 5;
+
+        return value.some((status) => {
+          switch (status) {
+            case "in_range":
+              return isInRange;
+            case "above_all_tp":
+              return isAboveAll;
+            case "below_all_tp":
+              return isBelowAll;
+            case "near_stop":
+              return isNearStop;
+            default:
+              return false;
+          }
+        });
+      }
     },
     {
       id: "actions",
@@ -289,8 +457,6 @@ export function SignalsTable({
     getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: getFilteredRowModel(),
-    initialState: {
-    },
     state: {
       sorting,
       columnFilters,
@@ -299,20 +465,7 @@ export function SignalsTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-1">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Filter pairs..."
-            value={(table.getColumn("coinPair")?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn("coinPair")?.setFilterValue(event.target.value)
-            }
-            className="max-w-sm"
-          />
-        </div>
-      </div>
-
+      <SignalsTableToolbar table={table} coins={uniqueCoins} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
