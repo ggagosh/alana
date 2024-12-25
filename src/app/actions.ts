@@ -9,7 +9,6 @@ import { Signal as SignalSchema } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
-import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
 
 async function getUserIdOrRedirect() {
   const user = await getUserOrThrow();
@@ -26,13 +25,10 @@ export async function addSignal(data: SignalSchema) {
     const addedSignalIds = [];
 
     for (const signalData of signalsToAdd) {
-      await handleRateLimit();
-      const currentPrice = await getCurrentPrice(signalData.coinPair);
-
       const normalizedSignal = {
         ...signalData,
         userId,
-        currentPrice: Number(formatPrice(currentPrice)),
+        currentPrice: signalData.entryHigh,
         dateAdded: new Date(),
         lastPriceUpdate: new Date(),
         isActive: true,
