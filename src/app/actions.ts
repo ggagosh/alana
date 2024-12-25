@@ -1,16 +1,15 @@
 'use server';
 
 import { db } from "@/db/drizzle";
-import { signals, takeProfits, apiKeys } from "@/db/schema";
+import { signals, takeProfits } from "@/db/schema";
 import { Signal } from "@/types/signals";
-import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
 import { eq, inArray, and } from "drizzle-orm";
-import { encrypt, decrypt } from "@/lib/crypto";
 import { formatPrice } from "@/lib/utils";
 import { Signal as SignalSchema } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { getCurrentPrice, handleRateLimit } from "@/lib/binance";
 
 async function getUserIdOrRedirect() {
   const user = await getUserOrThrow();
@@ -27,7 +26,7 @@ export async function addSignal(data: SignalSchema) {
     const addedSignalIds = [];
 
     for (const signalData of signalsToAdd) {
-      await handleRateLimit(); // Rate limit our Binance API calls
+      await handleRateLimit();
       const currentPrice = await getCurrentPrice(signalData.coinPair);
 
       const normalizedSignal = {
@@ -176,72 +175,6 @@ export async function updateTakeProfit(id: number, hit: boolean) {
   } catch (error) {
     console.error('Failed to update take profit:', error);
     throw error;
-  }
-}
-
-export async function saveApiKeys(name: string, key: string, secret: string) {
-  try {
-    const userId = await getUserIdOrRedirect();
-    // Encrypt sensitive data
-    const encryptedKey = await encrypt(key);
-    const encryptedSecret = await encrypt(secret);
-
-    // Delete existing key with same name if exists
-    await db.delete(apiKeys).where(and(
-      eq(apiKeys.name, name),
-      eq(apiKeys.userId, userId)
-    ));
-
-    // Save new key
-    await db.insert(apiKeys).values({
-      userId,
-      name,
-      key: encryptedKey,
-      secret: encryptedSecret,
-      dateAdded: new Date(),
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to save API keys:', error);
-    throw new Error('Failed to save API keys');
-  }
-}
-
-export async function getApiKeys(name: string) {
-  try {
-    const userId = await getUserIdOrRedirect();
-    const keys = await db.select().from(apiKeys).where(and(
-      eq(apiKeys.name, name),
-      eq(apiKeys.userId, userId)
-    ));
-    if (!keys.length) return null;
-
-    const key = keys[0];
-    return {
-      name: key.name,
-      key: await decrypt(key.key),
-      secret: await decrypt(key.secret),
-      dateAdded: key.dateAdded,
-      lastUsed: key.lastUsed,
-    };
-  } catch (error) {
-    console.error('Failed to get API keys:', error);
-    throw new Error('Failed to get API keys');
-  }
-}
-
-export async function deleteApiKeys(name: string) {
-  try {
-    const userId = await getUserIdOrRedirect();
-    await db.delete(apiKeys).where(and(
-      eq(apiKeys.name, name),
-      eq(apiKeys.userId, userId)
-    ));
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to delete API keys:', error);
-    throw new Error('Failed to delete API keys');
   }
 }
 

@@ -29,6 +29,13 @@
       "when": 1735122426847,
       "tag": "0003_right_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1735134065021,
+      "tag": "0004_sticky_warbound",
+      "breakpoints": true
     }
   ]
 }

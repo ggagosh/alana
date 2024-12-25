@@ -25,20 +25,6 @@ export const takeProfits = pgTable("take_profits", {
     hitDate: timestamp("hit_date", { mode: "date" }),
 }, (table) => ([]));
 
-export const apiKeys = pgTable("api_keys", {
-    id: serial("id").primaryKey(),
-    userId: uuid("user_id").notNull().references(() => authUsers.id, { onDelete: "cascade" }),
-    name: text("name").notNull().unique(),
-    key: text("key").notNull(),
-    secret: text("secret").notNull(),
-    dateAdded: timestamp("date_added", { mode: "date" }).notNull(),
-    lastUsed: timestamp("last_used", { mode: "date" }),
-}, (table) => ([]));
-
-export const usersRelations = relations(authUsers, ({ many }) => ({
-    apiKeys: many(apiKeys),
-}));
-
 export const signalsRelations = relations(signals, ({ many }) => ({
     takeProfits: many(takeProfits),
 }));

@@ -42,7 +42,7 @@ export function checkTakeProfitHit(signal: Signal): void {
         (signal.entryLow > signal.entryHigh && currentPrice <= tp.price)
       ) {
         tp.hit = true;
-        tp.hitDate = Date.now();
+        tp.hitDate = new Date();
       }
     }
   });
