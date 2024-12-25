@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { db } from "@/db/drizzle";
 import { SignalsTable } from "@/components/signals/SignalsTable";
 import { QuickAdd } from "@/components/signals/QuickAdd";
-import { deleteSignal, refreshPrices, addSignalAndRevalidate } from "./actions";
+import { deleteSignal, addSignalAndRevalidate } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
@@ -38,7 +38,6 @@ async function SignalsData() {
 
         <SignalsTable
           signals={signalsData}
-          onRefreshPrices={refreshPrices}
           onDeleteSignal={deleteSignal}
         />
       </div>

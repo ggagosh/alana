@@ -118,37 +118,6 @@ export async function deleteSignal(id: number) {
   }
 }
 
-export async function refreshPrices(signalsToUpdate: Signal[]) {
-  try {
-    const userId = await getUserIdOrRedirect();
-    for (const signal of signalsToUpdate) {
-      // Verify signal belongs to user
-      const userSignal = await db.query.signals.findFirst({
-        where: and(
-          eq(signals.id, signal.id),
-          eq(signals.userId, userId)
-        )
-      });
-
-      if (!userSignal) continue;
-
-      await handleRateLimit();
-      const currentPrice = await getCurrentPrice(signal.coinPair);
-      const newPrice = Number(formatPrice(currentPrice));
-
-      await db.update(signals)
-        .set({
-          currentPrice: newPrice,
-          lastPriceUpdate: new Date()
-        })
-        .where(eq(signals.id, signal.id));
-    }
-  } catch (error) {
-    console.error('Failed to refresh prices:', error);
-    throw error;
-  }
-}
-
 export async function updateTakeProfit(id: number, hit: boolean) {
   try {
     const userId = await getUserIdOrRedirect();

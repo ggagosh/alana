@@ -38,14 +38,12 @@ import { useRouter } from "next/navigation";
 
 interface SignalsTableProps {
   signals: Signal[];
-  onRefreshPrices?: (signalsToUpdate: Signal[]) => Promise<void>;
   onDeleteSignal?: (id: number) => Promise<void>;
   onArchiveSignal?: (id: number) => Promise<void>;
 }
 
-export function SignalsTable({ 
-  signals, 
-  onRefreshPrices,
+export function SignalsTable({
+  signals,
   onDeleteSignal,
   onArchiveSignal
 }: SignalsTableProps) {
@@ -125,8 +123,8 @@ export function SignalsTable({
                 changeFromEntry > 0
                   ? "text-green-500"
                   : changeFromEntry < 0
-                  ? "text-red-500"
-                  : "text-muted-foreground"
+                    ? "text-red-500"
+                    : "text-muted-foreground"
               )}
             >
               {changeFromEntry > 0 ? "+" : ""}
@@ -151,12 +149,12 @@ export function SignalsTable({
         const current = row.getValue("currentPrice") as number;
         const firstTP = tps[0];
         const lastTP = tps[tps.length - 1];
-        
+
         // Find the TP levels we're between
         const currentLevel = tps.findIndex(tp => tp.price > current);
         const isAboveAll = currentLevel === -1;
         const isBelowAll = currentLevel === 0;
-        
+
         return (
           <div className="space-y-2">
             <div className="font-mono text-sm">
@@ -192,7 +190,7 @@ export function SignalsTable({
         return (
           <div className="font-mono space-y-1">
             <div>{formatPrice(sl)}</div>
-            <div 
+            <div
               className={cn(
                 "text-xs",
                 isNearStop ? "text-red-500" : "text-muted-foreground"
@@ -260,7 +258,7 @@ export function SignalsTable({
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {onArchiveSignal && (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => onArchiveSignal(signal.id)}
                   className="text-yellow-600"
                 >
@@ -268,7 +266,7 @@ export function SignalsTable({
                 </DropdownMenuItem>
               )}
               {onDeleteSignal && (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => onDeleteSignal(signal.id)}
                   className="text-red-600"
                 >
@@ -299,17 +297,6 @@ export function SignalsTable({
     },
   });
 
-  const handleRefresh = async () => {
-    if (!onRefreshPrices || isRefreshing) return;
-    setIsRefreshing(true);
-    try {
-      await onRefreshPrices(signals);
-      router.refresh();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -324,20 +311,6 @@ export function SignalsTable({
             className="max-w-sm"
           />
         </div>
-        {onRefreshPrices && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={cn(
-              "h-4 w-4 mr-2",
-              isRefreshing && "animate-spin"
-            )} />
-            Refresh Prices
-          </Button>
-        )}
       </div>
 
       <div className="rounded-md border">
@@ -351,9 +324,9 @@ export function SignalsTable({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   );
                 })}
