@@ -6,6 +6,7 @@ import { SignalDetails } from "@/components/signals/SignalDetails";
 import { TakeProfitsProgress } from "@/components/signals/TakeProfitsProgress";
 import { SignalActions } from "@/components/signals/SignalActions";
 import { PriceChart } from "@/components/signals/PriceChart";
+import { PriceHistoryChart } from "@/components/signals/PriceHistoryChart";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -57,6 +58,7 @@ export default async function SignalPage({ params }: SignalPageProps) {
       <div className="grid lg:grid-cols-[1fr_350px] gap-4">
         <div className="space-y-4">
           <SignalDetails signal={signal} />
+          <PriceHistoryChart signal={signal} />
           <PriceChart signal={signal} />
         </div>
         <div>
