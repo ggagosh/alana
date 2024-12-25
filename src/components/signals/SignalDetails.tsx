@@ -48,7 +48,7 @@ export function SignalDetails({ signal }: SignalDetailsProps) {
             <p className="font-medium">
               {new Date(signal.dateShared).toLocaleDateString()} 
               <span className="text-xs text-muted-foreground ml-1">
-                ({Math.floor((Date.now() - signal.dateShared) / (1000 * 60 * 60 * 24))}d)
+                ({Math.floor((Date.now() - signal.dateShared.getTime()) / (1000 * 60 * 60 * 24))}d)
               </span>
             </p>
           </div>

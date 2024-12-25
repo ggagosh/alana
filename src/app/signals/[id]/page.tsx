@@ -13,9 +13,9 @@ import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 interface SignalPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>
 }
 
 export default async function SignalPage({ params }: SignalPageProps) {
