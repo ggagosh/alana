@@ -15,6 +15,13 @@
       "when": 1735060734971,
       "tag": "0001_pale_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1735114758397,
+      "tag": "0002_concerned_iron_lad",
+      "breakpoints": true
     }
   ]
 }
