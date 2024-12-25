@@ -2,7 +2,7 @@ import { parsedSignalSchema } from '@/lib/schema';
 import { streamObject } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 
-export const maxDuration = 90;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   const { prompt } = await req.json();
