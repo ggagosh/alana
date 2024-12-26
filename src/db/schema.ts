@@ -39,14 +39,3 @@ export const takeProfitsRelations = relations(takeProfits, ({ one }) => ({
 export const usersSignalsRelations = relations(authUsers, ({ many }) => ({
     signals: many(signals),
 }));
-
-export const coinPriceHistory = pgTable("coin_price_history", {
-    id: serial("id").primaryKey(),
-    coinPair: text("coin_pair").notNull(),
-    date: timestamp("date", { mode: "date" }).notNull(),
-    price: real("price").notNull(),
-}, (table) => ([
-    {
-        coinPairIdx: index("coin_pair_date_idx").on(table.coinPair, table.date),
-    }
-]));

@@ -32,16 +32,6 @@ Deno.serve(async (_req) => {
         }
       });
 
-
-      // Insert the current prices into the database
-      const values = currentPrices.flatMap(price => [price.coinPair, price.currentPrice]);
-      const placeholders = currentPrices.map((_, i) => `($${i * 2 + 1}, now(), $${i * 2 + 2})`).join(',');
-      await connection.queryArray(`
-          INSERT INTO coin_price_history (coin_pair, date, price) 
-          VALUES ${placeholders}
-        `, values);
-
-
       // Update the current prices and last_price_update in the database
       const placeholders2 = currentPrices.map((_, i) => `$${i + 1}`).join(',');
       const values2 = currentPrices.map(price => price.coinPair);

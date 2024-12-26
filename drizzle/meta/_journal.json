@@ -36,6 +36,13 @@
       "when": 1735134065021,
       "tag": "0004_sticky_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1735239889635,
+      "tag": "0005_steady_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

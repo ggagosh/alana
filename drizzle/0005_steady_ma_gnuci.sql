@@ -1,0 +1,1 @@
+DROP TABLE "coin_price_history" CASCADE;
