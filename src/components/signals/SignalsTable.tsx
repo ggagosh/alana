@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useState } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { formatDistance } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -31,12 +31,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, ExternalLink, Copy, MoreHorizontal, Trash2, RefreshCw, Search, ArrowUpDown } from "lucide-react";
+import { Eye, ExternalLink, Copy, MoreHorizontal, Trash2, RefreshCw, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { cn, formatPrice } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignalsTableToolbar } from "./SignalsTableToolbar";
 import { Progress } from "@/components/ui/progress";
+import { useBinanceWebSocket } from "@/hooks/useBinanceWebSocket";
+import { usePriceStore } from "@/stores/priceStore";
 
 interface SignalsTableProps {
   signals: Signal[];
@@ -117,6 +119,50 @@ function getDistanceToNearestTP(signal: Signal): { distance: number; level: numb
   };
 }
 
+const PriceCell = memo(({ signal }: { signal: Signal }) => {
+  const currentPrice = usePriceStore(state => state.getPriceBySymbol(signal.coinPair));
+  const previousPrice = usePriceStore(state => state.getPreviousPriceBySymbol(signal.coinPair));
+  const changeFromEntry = currentPrice
+    ? ((currentPrice - signal.entryLow) / signal.entryLow) * 100
+    : ((signal.currentPrice - signal.entryLow) / signal.entryLow) * 100;
+
+  const priceMovement = previousPrice
+    ? currentPrice && currentPrice > previousPrice ? 'up' : 'down'
+    : 'neutral';
+
+  return (
+    <div className="font-mono space-y-1">
+      <div className="flex items-center gap-2">
+        <div className={cn(
+          "flex items-center transition-colors duration-300",
+          priceMovement === 'up' && "text-green-500 dark:text-green-400",
+          priceMovement === 'down' && "text-red-500 dark:text-red-400"
+        )}>
+          {priceMovement !== 'neutral' && (
+            <span className={cn(
+              "mr-1 transition-transform duration-300",
+              priceMovement === 'up' && "animate-slide-up",
+              priceMovement === 'down' && "animate-slide-down"
+            )}>
+              {priceMovement === 'up' ? (
+                <ArrowUp className="h-4 w-4" />
+              ) : (
+                <ArrowDown className="h-4 w-4" />
+              )}
+            </span>
+          )}
+          <span>{formatPrice(currentPrice || signal.currentPrice)}</span>
+        </div>
+      </div>
+      <div className={cn(getPerformanceColor(changeFromEntry))}>
+        {changeFromEntry > 0 ? "+" : ""}
+        {changeFromEntry.toFixed(2)}%
+      </div>
+    </div>
+  );
+});
+PriceCell.displayName = 'PriceCell';
+
 export function SignalsTable({
   signals,
   onDeleteSignal,
@@ -127,9 +173,16 @@ export function SignalsTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const uniqueCoins = Array.from(new Set(signals.map(s => s.coinPair))).sort();
+  // Extract unique coin pairs for WebSocket subscription
+  const symbols = useMemo(() =>
+    Array.from(new Set(signals.map(s => s.coinPair))),
+    [signals]
+  );
 
-  const columns: ColumnDef<Signal>[] = [
+  // Subscribe to WebSocket updates
+  useBinanceWebSocket(symbols);
+
+  const columns: ColumnDef<Signal>[] = useMemo(() => [
     {
       accessorKey: "coinPair",
       header: ({ column }) => {
@@ -179,7 +232,7 @@ export function SignalsTable({
         const low = row.original.entryLow;
         const high = row.original.entryHigh;
         const isInRange = current >= low && current <= high;
-        
+
         return (
           <div className={cn(
             "font-mono",
@@ -204,29 +257,7 @@ export function SignalsTable({
           </Button>
         );
       },
-      cell: ({ row }) => {
-        const current = row.getValue("currentPrice") as number;
-        const entryLow = row.original.entryLow;
-        const changeFromEntry = ((current - entryLow) / entryLow) * 100;
-        const lastUpdate = row.original.lastPriceUpdate;
-
-        return (
-          <div className="font-mono space-y-1">
-            <div className="flex items-center gap-2">
-              <div>{formatPrice(current)}</div>
-              {lastUpdate && (
-                <div className="text-xs text-muted-foreground">
-                  ({formatDistance(lastUpdate, Date.now(), { addSuffix: true })})
-                </div>
-              )}
-            </div>
-            <div className={cn(getPerformanceColor(changeFromEntry))}>
-              {changeFromEntry > 0 ? "+" : ""}
-              {changeFromEntry.toFixed(2)}%
-            </div>
-          </div>
-        );
-      },
+      cell: ({ row }) => <PriceCell signal={row.original} />,
     },
     {
       accessorKey: "takeProfits",
@@ -338,7 +369,7 @@ export function SignalsTable({
                 {status.replace("_", " ")}
               </Badge>
               {pnl !== null && (
-                <Badge 
+                <Badge
                   variant={pnl >= 0 ? "default" : "destructive"}
                   className={cn(
                     pnl >= 10 && "bg-green-600 dark:bg-green-500",
@@ -351,18 +382,18 @@ export function SignalsTable({
                 </Badge>
               )}
             </div>
-            
+
             {nearestTP && (
               <div className={cn(
                 "text-sm",
                 nearestTP.distance <= 1 ? "text-yellow-600 dark:text-yellow-400 font-medium" :
-                nearestTP.distance <= 3 ? "text-blue-600 dark:text-blue-400" :
-                "text-muted-foreground"
+                  nearestTP.distance <= 3 ? "text-blue-600 dark:text-blue-400" :
+                    "text-muted-foreground"
               )}>
                 TP{nearestTP.level}: {Math.abs(nearestTP.distance).toFixed(1)}% {nearestTP.distance >= 0 ? "above" : "below"}
               </div>
             )}
-            
+
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span>Progress</span>
@@ -374,9 +405,9 @@ export function SignalsTable({
                   {hitTPCount}/{totalTPCount} TPs
                 </span>
               </div>
-              <Progress 
-                value={successRate} 
-                className="h-1" 
+              <Progress
+                value={successRate}
+                className="h-1"
                 indicatorClassName={getProgressColor(successRate)}
               />
               {hitTPCount > 0 && (
@@ -489,10 +520,10 @@ export function SignalsTable({
         );
       },
     },
-  ];
+  ], []); // Empty dependency array since columns structure doesn't change
 
   const table = useReactTable({
-    data: signals,
+    data: signals, // Use original signals instead of updatedSignals
     columns,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
@@ -507,7 +538,7 @@ export function SignalsTable({
 
   return (
     <div className="space-y-4">
-      <SignalsTableToolbar table={table} coins={uniqueCoins} />
+      <SignalsTableToolbar table={table} coins={Array.from(new Set(signals.map(s => s.coinPair))).sort()} />
       <div className="rounded-md border">
         <Table>
           <TableHeader>
