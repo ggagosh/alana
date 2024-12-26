@@ -67,11 +67,26 @@ function getSignalStatus(signal: Signal): SignalStatus {
 
 function getStatusColor(status: SignalStatus): string {
   switch (status) {
-    case "pre_entry": return "text-muted-foreground";
-    case "in_entry": return "text-yellow-500";
-    case "active": return "text-green-500";
-    case "closed": return "text-blue-500";
+    case "pre_entry": return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400";
+    case "in_entry": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300";
+    case "active": return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
+    case "closed": return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
   }
+}
+
+function getPerformanceColor(value: number): string {
+  if (value >= 10) return "text-green-600 dark:text-green-400 font-medium";
+  if (value > 0) return "text-green-500 dark:text-green-300";
+  if (value < -5) return "text-red-600 dark:text-red-400 font-medium";
+  if (value < 0) return "text-red-500 dark:text-red-300";
+  return "text-slate-600 dark:text-slate-400";
+}
+
+function getProgressColor(percentage: number): string {
+  if (percentage >= 75) return "bg-green-600 dark:bg-green-500";
+  if (percentage >= 50) return "bg-blue-600 dark:bg-blue-500";
+  if (percentage >= 25) return "bg-yellow-600 dark:bg-yellow-500";
+  return "bg-slate-600 dark:bg-slate-500";
 }
 
 function calculatePnL(signal: Signal): number | null {
@@ -129,14 +144,25 @@ export function SignalsTable({
           </Button>
         );
       },
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <div className="font-medium">{row.getValue("coinPair")}</div>
-          {!row.original.isActive && (
-            <Badge variant="secondary" className="text-xs">Archived</Badge>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const current = row.getValue("currentPrice") as number;
+        const entryLow = row.original.entryLow;
+        const change = ((current - entryLow) / entryLow) * 100;
+
+        return (
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "font-medium",
+              getPerformanceColor(change)
+            )}>
+              {row.getValue("coinPair")}
+            </div>
+            {!row.original.isActive && (
+              <Badge variant="secondary" className="text-xs">Archived</Badge>
+            )}
+          </div>
+        );
+      },
       filterFn: (row, columnId, filterValue) => {
         if (!filterValue) {
           return true;
@@ -148,11 +174,21 @@ export function SignalsTable({
     {
       accessorKey: "entryRange",
       header: "Entry",
-      cell: ({ row }) => (
-        <div className="font-mono">
-          {formatPrice(row.original.entryLow)} - {formatPrice(row.original.entryHigh)}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const current = row.getValue("currentPrice") as number;
+        const low = row.original.entryLow;
+        const high = row.original.entryHigh;
+        const isInRange = current >= low && current <= high;
+        
+        return (
+          <div className={cn(
+            "font-mono",
+            isInRange && "text-yellow-600 dark:text-yellow-400 font-medium"
+          )}>
+            {formatPrice(low)} - {formatPrice(high)}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "currentPrice",
@@ -171,8 +207,6 @@ export function SignalsTable({
       cell: ({ row }) => {
         const current = row.getValue("currentPrice") as number;
         const entryLow = row.original.entryLow;
-        const entryHigh = row.original.entryHigh;
-        const isInRange = current >= entryLow && current <= entryHigh;
         const changeFromEntry = ((current - entryLow) / entryLow) * 100;
         const lastUpdate = row.original.lastPriceUpdate;
 
@@ -186,24 +220,10 @@ export function SignalsTable({
                 </div>
               )}
             </div>
-            <div
-              className={cn(
-                "text-xs",
-                changeFromEntry > 0
-                  ? "text-green-500"
-                  : changeFromEntry < 0
-                    ? "text-red-500"
-                    : "text-muted-foreground"
-              )}
-            >
+            <div className={cn(getPerformanceColor(changeFromEntry))}>
               {changeFromEntry > 0 ? "+" : ""}
               {changeFromEntry.toFixed(2)}%
             </div>
-            {isInRange && (
-              <Badge variant="outline" className="text-xs">
-                In Range
-              </Badge>
-            )}
           </div>
         );
       },
@@ -305,7 +325,6 @@ export function SignalsTable({
       cell: ({ row }) => {
         const signal = row.original;
         const status = getSignalStatus(signal);
-        const statusColor = getStatusColor(status);
         const pnl = calculatePnL(signal);
         const nearestTP = getDistanceToNearestTP(signal);
         const hitTPCount = signal.takeProfits?.filter(tp => tp.hit).length ?? 0;
@@ -315,18 +334,31 @@ export function SignalsTable({
         return (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge className={cn("capitalize", statusColor)}>
+              <Badge className={cn("capitalize", getStatusColor(status))}>
                 {status.replace("_", " ")}
               </Badge>
               {pnl !== null && (
-                <Badge variant={pnl >= 0 ? "default" : "destructive"}>
+                <Badge 
+                  variant={pnl >= 0 ? "default" : "destructive"}
+                  className={cn(
+                    pnl >= 10 && "bg-green-600 dark:bg-green-500",
+                    pnl >= 5 && pnl < 10 && "bg-green-500 dark:bg-green-400",
+                    pnl < 0 && pnl > -5 && "bg-red-500 dark:bg-red-400",
+                    pnl <= -5 && "bg-red-600 dark:bg-red-500"
+                  )}
+                >
                   {pnl >= 0 ? "+" : ""}{pnl.toFixed(2)}%
                 </Badge>
               )}
             </div>
             
             {nearestTP && (
-              <div className="text-sm text-muted-foreground">
+              <div className={cn(
+                "text-sm",
+                nearestTP.distance <= 1 ? "text-yellow-600 dark:text-yellow-400 font-medium" :
+                nearestTP.distance <= 3 ? "text-blue-600 dark:text-blue-400" :
+                "text-muted-foreground"
+              )}>
                 TP{nearestTP.level}: {Math.abs(nearestTP.distance).toFixed(1)}% {nearestTP.distance >= 0 ? "above" : "below"}
               </div>
             )}
@@ -334,9 +366,19 @@ export function SignalsTable({
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span>Progress</span>
-                <span>{hitTPCount}/{totalTPCount} TPs</span>
+                <span className={cn(
+                  successRate >= 75 && "text-green-600 dark:text-green-400",
+                  successRate >= 50 && successRate < 75 && "text-blue-600 dark:text-blue-400",
+                  successRate >= 25 && successRate < 50 && "text-yellow-600 dark:text-yellow-400"
+                )}>
+                  {hitTPCount}/{totalTPCount} TPs
+                </span>
               </div>
-              <Progress value={successRate} className="h-1" />
+              <Progress 
+                value={successRate} 
+                className="h-1" 
+                indicatorClassName={getProgressColor(successRate)}
+              />
               {hitTPCount > 0 && (
                 <div className="text-xs text-muted-foreground">
                   Last hit: {signal.takeProfits
