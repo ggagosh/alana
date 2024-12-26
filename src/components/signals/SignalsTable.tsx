@@ -520,7 +520,10 @@ export function SignalsTable({
         );
       },
     },
-  ], []); // Empty dependency array since columns structure doesn't change
+  ], [
+    onArchiveSignal,
+    onDeleteSignal
+  ]); // Empty dependency array since columns structure doesn't change
 
   const table = useReactTable({
     data: signals, // Use original signals instead of updatedSignals

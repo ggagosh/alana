@@ -55,13 +55,13 @@ export default async function SignalPage({ params }: SignalPageProps) {
         <SignalActions signal={signal} />
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_350px] gap-4">
-        <div className="space-y-4">
+      <div className="grid lg:grid-cols-[1.2fr_300px] gap-3">
+        <div className="space-y-3">
           <SignalDetails signal={signal} />
           <PriceHistoryChart signal={signal} />
           <PriceChart signal={signal} />
         </div>
-        <div>
+        <div className="sticky top-4 h-fit">
           <TakeProfitsProgress signal={signal} />
         </div>
       </div>
