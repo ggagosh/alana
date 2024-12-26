@@ -3,9 +3,8 @@ import { db } from "@/db/drizzle";
 import { eq, and } from "drizzle-orm";
 import { signals } from "@/db/schema";
 import { SignalDetails } from "@/components/signals/SignalDetails";
-import { TakeProfitsProgress } from "@/components/signals/TakeProfitsProgress";
 import { SignalActions } from "@/components/signals/SignalActions";
-import { PriceChart } from "@/components/signals/PriceChart";
+import { PriceMovement } from "@/components/signals/PriceMovement";
 import { PriceHistoryChart } from "@/components/signals/PriceHistoryChart";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -59,10 +58,9 @@ export default async function SignalPage({ params }: SignalPageProps) {
         <div className="space-y-3">
           <SignalDetails signal={signal} />
           <PriceHistoryChart signal={signal} />
-          <PriceChart signal={signal} />
         </div>
-        <div className="sticky top-4 h-fit">
-          <TakeProfitsProgress signal={signal} />
+        <div className="top-4 h-fit">
+          <PriceMovement signal={signal} />
         </div>
       </div>
     </div>
