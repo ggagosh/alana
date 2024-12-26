@@ -75,7 +75,7 @@ export function PriceMovement({ signal }: PriceMovementProps) {
               "font-mono",
               price.type === "Current" && "font-medium"
             )}>
-              ${price.price.toFixed(2)}
+              ${price.price}
             </span>
           </div>
         ))}

@@ -14,7 +14,7 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart>>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick">>(null);
-  const { data: cryptoData, loading, error } = useCryptoData(symbol, "1m", 1000);
+  const { data: cryptoData, loading, error } = useCryptoData(symbol, "1h", 1000);
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
 
@@ -60,6 +60,12 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
           top: 0.1,
           bottom: 0.1,
         },
+        mode: 1,
+        autoScale: true,
+        alignLabels: true,
+        borderVisible: true,
+        entireTextOnly: false,
+        ticksVisible: true
       },
       handleScale: {
         axisPressedMouseMove: {
@@ -86,6 +92,11 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
       borderVisible: false,
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
+      priceFormat: {
+        type: 'price',
+        precision: 8,
+        minMove: 0.00000001,
+      },
     });
     candlestickSeriesRef.current = candlestickSeries;
 
@@ -108,7 +119,7 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
     chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
 
     // Setup resize handler
-    const handleResize = () => { 
+    const handleResize = () => {
       const { width } = chartContainerRef.current?.getBoundingClientRect() || { width: 0 };
       if (width > 0 && chartRef.current) {
         chartRef.current.applyOptions({
@@ -132,7 +143,7 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
         chartRef.current.remove();
       }
     };
-  }, [cryptoData.length > 0, isDarkTheme]);
+  }, [cryptoData.length > 0, isDarkTheme, cryptoData]);
 
   // Handle real-time updates
   useEffect(() => {
