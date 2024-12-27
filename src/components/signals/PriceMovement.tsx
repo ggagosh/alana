@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Signal } from "@/types/signals";
-import { useCryptoData } from "@/hooks/useCryptoData";
+import { useBinanceData } from "@/hooks/useBinanceData";
 
 interface PriceMovementProps {
   signal: Signal;
@@ -79,7 +79,7 @@ function getPrices(signal: Signal, currentPrice: number) {
 
 export function PriceMovement({ signal, initialPrices }: PriceMovementProps) {
   const [isClient, setIsClient] = useState(false);
-  const { data: cryptoData } = useCryptoData(signal.coinPair, "1m", 1);
+  const { data: cryptoData } = useBinanceData([signal.coinPair], "1m", 1);
   const currentPrice = cryptoData[cryptoData.length - 1]?.close || signal.currentPrice || 0;
   
   useEffect(() => {

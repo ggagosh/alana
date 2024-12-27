@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createChart, ColorType, UTCTimestamp, ChartOptions, DeepPartial, ISeriesApi, CandlestickData } from 'lightweight-charts';
-import { useCryptoData } from "@/hooks/useCryptoData";
+import { useBinanceData } from "@/hooks/useBinanceData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "next-themes";
 
@@ -14,7 +14,7 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart>>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick">>(null);
-  const { data: cryptoData, loading, error } = useCryptoData(symbol, "1h", 1000);
+  const { data: cryptoData, loading, error } = useBinanceData([symbol], "1h", 1000);
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
 

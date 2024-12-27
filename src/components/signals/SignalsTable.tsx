@@ -37,7 +37,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignalsTableToolbar } from "./SignalsTableToolbar";
 import { Progress } from "@/components/ui/progress";
-import { useBinanceWebSocket } from "@/hooks/useBinanceWebSocket";
+import { useBinanceData } from "@/hooks/useBinanceData";
 import { usePriceStore } from "@/stores/priceStore";
 
 interface SignalsTableProps {
@@ -179,8 +179,8 @@ export function SignalsTable({
     [signals]
   );
 
-  // Subscribe to WebSocket updates
-  useBinanceWebSocket(symbols);
+  // Subscribe to WebSocket updates for all symbols
+  useBinanceData(symbols);
 
   const columns: ColumnDef<Signal>[] = useMemo(() => [
     {
