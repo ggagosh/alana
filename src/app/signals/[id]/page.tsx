@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import { signals } from "@/db/schema";
 import { SignalDetails } from "@/components/signals/SignalDetails";
 import { SignalActions } from "@/components/signals/SignalActions";
-import { PriceMovement } from "@/components/signals/PriceMovement";
+import { PriceMovementWrapper } from "@/components/signals/PriceMovementWrapper";
 import { PriceHistoryChart } from "@/components/signals/PriceHistoryChart";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
@@ -56,11 +56,13 @@ export default async function SignalPage({ params }: SignalPageProps) {
 
       <div className="grid lg:grid-cols-[1.2fr_300px] gap-3">
         <div className="space-y-3">
-          <SignalDetails signal={signal} />
-          <PriceHistoryChart signal={signal} />
+          <div className="flex flex-col gap-4">
+            <SignalDetails signal={signal} />
+            <PriceHistoryChart signal={signal} />
+          </div>
         </div>
         <div className="top-4 h-fit">
-          <PriceMovement signal={signal} />
+          <PriceMovementWrapper signal={signal} />
         </div>
       </div>
     </div>

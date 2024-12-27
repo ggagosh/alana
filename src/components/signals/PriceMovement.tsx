@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Signal } from "@/types/signals";
@@ -8,75 +8,135 @@ import { useCryptoData } from "@/hooks/useCryptoData";
 
 interface PriceMovementProps {
   signal: Signal;
+  initialPrices: Array<{
+    price: number;
+    type: string;
+    hit: boolean;
+    percentage: string;
+  }>;
 }
 
-export function PriceMovement({ signal }: PriceMovementProps) {
-  const { data: cryptoData } = useCryptoData(signal.coinPair, "1m", 1);
-  const currentPrice = cryptoData[cryptoData.length - 1]?.close || 0;
+const formatPrice = (price: number) => {
+  return price.toLocaleString('en-US', {
+    minimumFractionDigits: 8,
+    maximumFractionDigits: 8
+  });
+};
 
-  const prices = useMemo(() => {
-    const takeProfits = signal.takeProfits.map(tp => ({
-      price: tp.price,
-      type: "Take Profit",
-      hit: currentPrice >= tp.price,
-    }));
+const calculatePercentage = (price: number, currentPrice: number) => {
+  if (currentPrice === 0) return "0.00";
+  const percentage = ((price - currentPrice) / currentPrice * 100);
+  if (!isFinite(percentage)) return "0.00";
+  return percentage.toFixed(2);
+};
 
-    const allPrices = [
-      { price: signal.stopLoss, type: "Stop Loss", hit: currentPrice <= signal.stopLoss },
-      { price: signal.entryHigh, type: "Entry", hit: currentPrice >= signal.entryHigh },
-      ...takeProfits,
-    ].sort((a, b) => b.price - a.price);
+function getPrices(signal: Signal, currentPrice: number) {
+  const takeProfits = signal.takeProfits.map(tp => ({
+    price: tp.price,
+    type: "Take Profit",
+    hit: currentPrice >= tp.price,
+    percentage: calculatePercentage(tp.price, currentPrice)
+  }));
 
-    // Insert current price in the correct position
+  const allPrices = [
+    { 
+      price: signal.stopLoss, 
+      type: "Stop Loss", 
+      hit: currentPrice <= signal.stopLoss,
+      percentage: calculatePercentage(signal.stopLoss, currentPrice)
+    },
+    { 
+      price: signal.entryHigh, 
+      type: "Entry", 
+      hit: currentPrice >= signal.entryHigh,
+      percentage: calculatePercentage(signal.entryHigh, currentPrice)
+    },
+    ...takeProfits,
+  ].sort((a, b) => b.price - a.price);
+
+  // Insert current price in the correct position
+  if (currentPrice > 0) {
     const currentPriceIndex = allPrices.findIndex(p => currentPrice > p.price);
     if (currentPriceIndex !== -1) {
       allPrices.splice(currentPriceIndex, 0, { 
         price: currentPrice, 
         type: "Current", 
-        hit: false 
+        hit: false,
+        percentage: "0.00"
       });
     } else {
-      allPrices.push({ price: currentPrice, type: "Current", hit: false });
+      allPrices.push({ 
+        price: currentPrice, 
+        type: "Current", 
+        hit: false,
+        percentage: "0.00"
+      });
     }
+  }
 
-    return allPrices;
-  }, [signal, currentPrice]);
+  return allPrices;
+}
+
+export function PriceMovement({ signal, initialPrices }: PriceMovementProps) {
+  const [isClient, setIsClient] = useState(false);
+  const { data: cryptoData } = useCryptoData(signal.coinPair, "1m", 1);
+  const currentPrice = cryptoData[cryptoData.length - 1]?.close || signal.currentPrice || 0;
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const prices = isClient ? getPrices(signal, currentPrice) : initialPrices;
 
   return (
-    <Card className="p-4 space-y-3">
+    <Card className="p-4 space-y-2">
       <h3 className="font-medium text-sm">Price Movement</h3>
-      <div className="space-y-2">
+      <div className="space-y-1">
         {prices.map((price, index) => (
           <div 
             key={`${price.type}-${index}`}
             className={cn(
-              "flex items-center justify-between py-1.5 px-2 rounded text-sm",
+              "py-1 px-2 rounded",
               price.type === "Current" && "bg-secondary",
               price.hit && "opacity-50"
             )}
           >
-            <div className="flex items-center gap-2">
-              <div 
-                className={cn(
-                  "w-2 h-2 rounded-full",
-                  price.type === "Stop Loss" && "bg-red-500",
-                  price.type === "Entry" && "bg-blue-500",
-                  price.type === "Take Profit" && "bg-green-500",
-                  price.type === "Current" && "bg-yellow-500"
-                )}
-              />
-              <span className={cn(
-                price.type === "Current" && "font-medium"
-              )}>
-                {price.type}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div 
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full",
+                    price.type === "Stop Loss" && "bg-red-500",
+                    price.type === "Entry" && "bg-blue-500",
+                    price.type === "Take Profit" && "bg-green-500",
+                    price.type === "Current" && "bg-yellow-500"
+                  )}
+                />
+                <span className={cn(
+                  "text-sm",
+                  price.type === "Current" && "font-medium"
+                )}>
+                  {price.type}
+                </span>
+              </div>
+              <div className="text-right">
+                <div className={cn(
+                  "font-mono text-sm",
+                  price.type === "Current" && "font-medium"
+                )}>
+                  ${formatPrice(price.price)}
+                </div>
+                <div className={cn(
+                  "text-xs font-medium leading-none mt-0.5",
+                  "h-[1.25rem]",
+                  price.type !== "Current" && (Number(price.percentage) > 0 ? "text-green-500" : "text-red-500")
+                )}>
+                  {price.type !== "Current" && (
+                    <>{Number(price.percentage) > 0 ? "+" : ""}{price.percentage}%</>
+                  )}
+                </div>
+              </div>
             </div>
-            <span className={cn(
-              "font-mono",
-              price.type === "Current" && "font-medium"
-            )}>
-              ${price.price}
-            </span>
           </div>
         ))}
       </div>
