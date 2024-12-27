@@ -269,6 +269,8 @@ export function SignalsTable({
         const current = row.getValue("currentPrice") as number;
         const firstTP = tps[0];
         const lastTP = tps[tps.length - 1];
+        const sl = row.original.stopLoss;
+        const isBelowSL = current < sl;
 
         // Find the TP levels we're between
         const currentLevel = tps.findIndex(tp => tp.price > current);
@@ -281,7 +283,9 @@ export function SignalsTable({
               {formatPrice(firstTP.price)} → {formatPrice(lastTP.price)}
             </div>
             <div className="flex items-center gap-2">
-              {isAboveAll ? (
+              {isBelowSL ? (
+                <Badge variant="destructive">Below StopLoss</Badge>
+              ) : isAboveAll ? (
                 <Badge className="bg-green-500">Above All TPs</Badge>
               ) : isBelowAll ? (
                 <Badge variant="outline">Below All TPs</Badge>
@@ -292,7 +296,7 @@ export function SignalsTable({
               )}
             </div>
             <div className="text-xs text-muted-foreground">
-              Next Level: {!isAboveAll && formatPrice(tps[currentLevel]?.price)}
+              Next Level: {!isAboveAll && !isBelowSL && formatPrice(tps[currentLevel]?.price)}
             </div>
           </div>
         );
@@ -448,6 +452,7 @@ export function SignalsTable({
         const sl = row.original.stopLoss;
         const distance = ((current - sl) / current) * 100;
         const isNearStop = Math.abs(distance) < 5;
+        const isBelowSL = current < sl;
 
         return value.some((status) => {
           switch (status) {
@@ -459,10 +464,20 @@ export function SignalsTable({
               return isBelowAll;
             case "near_stop":
               return isNearStop;
+            case "below_stop_loss":
+              return isBelowSL;
             default:
               return false;
           }
         });
+      }
+    },
+    {
+      id: "hide_closed_filter",
+      filterFn: (row) => {
+        const hideClosed = table.getState().columnFilters.find(f => f.id === "hide_closed_filter")?.value;
+        if (!hideClosed) return true;
+        return getSignalStatus(row.original) !== "closed";
       }
     },
     {

@@ -5,6 +5,9 @@ import { Table } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DataTableFacetedFilter } from "@/components/ui/data-table-faceted-filter";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { useEffect } from "react";
 
 interface SignalsTableToolbarProps<TData> {
   table: Table<TData>;
@@ -17,9 +20,14 @@ export function SignalsTableToolbar<TData>({
 }: SignalsTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 
+  // Set default value for hide closed filter
+  useEffect(() => {
+    table.getColumn("hide_closed_filter")?.setFilterValue(true);
+  }, [table]);
+
   return (
     <div className="flex items-center justify-between">
-      <div className="flex flex-1 items-center space-x-2">
+      <div className="flex flex-1 items-center space-x-4">
         <Input
           placeholder="Filter pairs..."
           value={(table.getColumn("coinPair")?.getFilterValue() as string) ?? ""}
@@ -28,6 +36,16 @@ export function SignalsTableToolbar<TData>({
           }
           className="h-8 w-[150px] lg:w-[250px]"
         />
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="hide-closed"
+            checked={table.getColumn("hide_closed_filter")?.getFilterValue() as boolean ?? true}
+            onCheckedChange={(checked) => {
+              table.getColumn("hide_closed_filter")?.setFilterValue(checked);
+            }}
+          />
+          <Label htmlFor="hide-closed">Hide Closed</Label>
+        </div>
         {table.getColumn("signal_status_filter") && (
           <DataTableFacetedFilter
             column={table.getColumn("signal_status_filter")}
@@ -49,6 +67,7 @@ export function SignalsTableToolbar<TData>({
               { label: "Above All TPs", value: "above_all_tp" },
               { label: "Below All TPs", value: "below_all_tp" },
               { label: "Near Stop Loss", value: "near_stop" },
+              { label: "Below Stop Loss", value: "below_stop_loss" },
             ]}
           />
         )}
