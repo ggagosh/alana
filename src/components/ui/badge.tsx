@@ -9,11 +9,11 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "border-transparent bg-primary text-primary-foreground",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "border-transparent bg-secondary text-secondary-foreground",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          "border-transparent bg-destructive text-destructive-foreground",
         outline: "text-foreground",
       },
     },
@@ -23,13 +23,36 @@ const badgeVariants = cva(
   }
 )
 
+const hoverVariants = cva("", {
+  variants: {
+    variant: {
+      default: "hover:bg-primary/80",
+      secondary: "hover:bg-secondary/80",
+      destructive: "hover:bg-destructive/80",
+      outline: "",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> {}
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, role, ...props }: BadgeProps) {
+  const isRoleButton = role === "button";
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
+    <div
+      className={cn(
+        badgeVariants({ variant }),
+        isRoleButton && hoverVariants({ variant }),
+        className
+      )}
+      role={role}
+      {...props}
+    />
   )
 }
 
