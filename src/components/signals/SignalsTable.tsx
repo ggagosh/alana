@@ -32,13 +32,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, ExternalLink, Copy, MoreHorizontal, Trash2, RefreshCw, Search, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignalsTableToolbar } from "./SignalsTableToolbar";
 import { Progress } from "@/components/ui/progress";
 import { useBinanceData } from "@/hooks/useBinanceData";
 import { usePriceStore } from "@/stores/priceStore";
+import CryptoPrice from "./CryptoPrice";
 
 interface SignalsTableProps {
   signals: Signal[];
@@ -151,7 +152,7 @@ const PriceCell = memo(({ signal }: { signal: Signal }) => {
               )}
             </span>
           )}
-          <span>{formatPrice(currentPrice || signal.currentPrice)}</span>
+          <CryptoPrice price={currentPrice || signal.currentPrice} />
         </div>
       </div>
       <div className={cn(getPerformanceColor(changeFromEntry))}>
@@ -238,7 +239,9 @@ export function SignalsTable({
             "font-mono",
             isInRange && "text-yellow-600 dark:text-yellow-400 font-medium"
           )}>
-            {formatPrice(low)} - {formatPrice(high)}
+            <CryptoPrice price={low.toString()} />
+            <span className="mx-1">-</span>
+            <CryptoPrice price={high.toString()} />
           </div>
         );
       },
@@ -280,7 +283,9 @@ export function SignalsTable({
         return (
           <div className="space-y-2">
             <div className="font-mono text-sm">
-              {formatPrice(firstTP.price)} → {formatPrice(lastTP.price)}
+              <CryptoPrice price={firstTP.price.toString()} />
+              <span className="mx-1">→</span>
+              <CryptoPrice price={lastTP.price.toString()} />
             </div>
             <div className="flex items-center gap-2">
               {isBelowSL ? (
@@ -296,7 +301,7 @@ export function SignalsTable({
               )}
             </div>
             <div className="text-xs text-muted-foreground">
-              Next Level: {!isAboveAll && !isBelowSL && formatPrice(tps[currentLevel]?.price)}
+              Next Level: {!isAboveAll && !isBelowSL && <CryptoPrice price={tps[currentLevel]?.price} />}
             </div>
           </div>
         );
@@ -313,7 +318,9 @@ export function SignalsTable({
 
         return (
           <div className="font-mono space-y-1">
-            <div>{formatPrice(sl)}</div>
+            <div>
+              <CryptoPrice price={sl.toString()} />
+            </div>
             <div
               className={cn(
                 "text-xs",

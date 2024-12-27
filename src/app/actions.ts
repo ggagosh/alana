@@ -4,7 +4,6 @@ import { db } from "@/db/drizzle";
 import { signals, takeProfits } from "@/db/schema";
 import { Signal } from "@/types/signals";
 import { eq, inArray, and } from "drizzle-orm";
-import { formatPrice } from "@/lib/utils";
 import { Signal as SignalSchema } from "@/lib/schema";
 import { revalidatePath } from "next/cache";
 import { getUserOrThrow } from "@/lib/auth/session";
@@ -52,7 +51,7 @@ export async function addSignal(data: SignalSchema) {
           signalData.takeProfits.map(tp => ({
             signalId: signal.id,
             level: tp.level,
-            price: Number(formatPrice(tp.price)),
+            price: tp.price,
             hit: false,
             hitDate: null
           }))
@@ -80,7 +79,7 @@ export async function updateSignal(id: number, data: Partial<Signal>) {
     const normalizedData = Object.fromEntries(
       Object.entries(data).map(([key, value]) => {
         if (["entryLow", "entryHigh", "currentPrice", "stopLoss"].includes(key) && typeof value === "number") {
-          return [key, Number(formatPrice(value))];
+          return [key, value];
         }
         return [key, value];
       })

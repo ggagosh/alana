@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { formatDistance } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Signal } from "@/lib/schema";
-import { formatPrice } from "@/lib/utils";
+import CryptoPrice from "./CryptoPrice";
 
 interface ParsedSignalsPreviewProps {
   signals: Partial<Signal>[];
@@ -39,21 +39,25 @@ export function ParsedSignalsPreview({ signals }: ParsedSignalsPreviewProps) {
                 <div className="space-y-1">
                   <div className="text-muted-foreground">Entry Range</div>
                   <div className="font-mono">
-                    {formatPrice(signal.entryLow || 0)} -
+                    <CryptoPrice price={signal.entryLow || 0} />
                     <br />
-                    {formatPrice(signal.entryHigh || 0)}
+                    <CryptoPrice price={signal.entryHigh || 0} />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-muted-foreground">Current Price</div>
-                  <div className="font-mono">{formatPrice(signal.currentPrice)}</div>
+                  <div className="font-mono">
+                    <CryptoPrice price={signal.currentPrice} />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <div className="text-muted-foreground text-sm">Stop Loss</div>
                 <div className="flex items-center gap-2">
-                  <div className="font-mono text-sm">{formatPrice(signal.stopLoss)}</div>
+                  <div className="font-mono text-sm">
+                    <CryptoPrice price={signal.stopLoss} />
+                  </div>
                   <Badge variant={risk < -5 ? 'destructive' : 'outline'}>
                     {Math.abs(risk).toFixed(1)}% Risk
                   </Badge>
@@ -71,7 +75,9 @@ export function ParsedSignalsPreview({ signals }: ParsedSignalsPreviewProps) {
                         <div key={tp.level} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <span className="text-muted-foreground text-sm">TP{tp.level}</span>
-                            <span className="font-mono text-sm">{formatPrice(tp.price)}</span>
+                            <span className="font-mono text-sm">
+                              <CryptoPrice price={tp.price} />
+                            </span>
                           </div>
                           <Badge variant={profit > 10 ? 'default' : 'outline'}>
                             {profit.toFixed(1)}%

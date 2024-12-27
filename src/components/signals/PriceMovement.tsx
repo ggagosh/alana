@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Signal } from "@/types/signals";
 import { useBinanceData } from "@/hooks/useBinanceData";
+import CryptoPrice from "./CryptoPrice";
 
 interface PriceMovementProps {
   signal: Signal;
@@ -15,13 +16,6 @@ interface PriceMovementProps {
     percentage: string;
   }>;
 }
-
-const formatPrice = (price: number) => {
-  return price.toLocaleString('en-US', {
-    minimumFractionDigits: 8,
-    maximumFractionDigits: 8
-  });
-};
 
 const calculatePercentage = (price: number, currentPrice: number) => {
   if (currentPrice === 0) return "0.00";
@@ -124,7 +118,7 @@ export function PriceMovement({ signal, initialPrices }: PriceMovementProps) {
                   "font-mono text-sm",
                   price.type === "Current" && "font-medium"
                 )}>
-                  ${formatPrice(price.price)}
+                  <CryptoPrice price={price.price} />
                 </div>
                 <div className={cn(
                   "text-xs font-medium leading-none mt-0.5",

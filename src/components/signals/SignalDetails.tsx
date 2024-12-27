@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Signal } from "@/types/signals";
-import { formatPrice, calculatePriceChange } from "@/lib/utils";
+import { calculatePriceChange } from "@/lib/utils";
+import CryptoPrice from "./CryptoPrice";
 
 interface SignalDetailsProps {
   signal: Signal;
@@ -25,7 +26,7 @@ export function SignalDetails({ signal }: SignalDetailsProps) {
           <div>
             <p className="text-muted-foreground">Current Price</p>
             <p className="font-medium flex items-center gap-1">
-              {formatPrice(signal.currentPrice)}
+              <CryptoPrice price={signal.currentPrice} />
               <span className={`text-xs ${priceChange.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
                 {priceChange}
               </span>
@@ -35,12 +36,16 @@ export function SignalDetails({ signal }: SignalDetailsProps) {
           <div>
             <p className="text-muted-foreground">Entry Range</p>
             <p className="font-medium font-mono">
-              {formatPrice(signal.entryLow)} - {formatPrice(signal.entryHigh)}
+              <CryptoPrice price={signal.entryLow} />
+              <span className="mx-1">-</span>
+              <CryptoPrice price={signal.entryHigh} />
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Stop Loss</p>
-            <p className="font-medium font-mono">{formatPrice(signal.stopLoss)}</p>
+            <p className="font-medium font-mono">
+              <CryptoPrice price={signal.stopLoss} />
+            </p>
           </div>
 
           <div>

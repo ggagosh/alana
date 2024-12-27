@@ -1,10 +1,10 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Signal, TakeProfit } from "@/types/signals";
-import { formatPrice } from "@/lib/utils";
+import { Signal } from "@/types/signals";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import CryptoPrice from "./CryptoPrice";
 
 interface TakeProfitsProgressProps {
   signal: Signal;
@@ -46,7 +46,7 @@ export function TakeProfitsProgress({ signal }: TakeProfitsProgressProps) {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground font-mono">
-                      {formatPrice(tp.price)}
+                      <CryptoPrice price={tp.price} />
                     </p>
                   </div>
                 </div>
