@@ -65,7 +65,7 @@ export function useBinanceData(
         }
         
         const rawData = await response.json();
-        const formattedData: KLineData[] = rawData.map((item: any[]) => ({
+        const formattedData: KLineData[] = rawData.map((item: string[]) => ({
           timestamp: item[0],
           open: parseFloat(item[1]),
           high: parseFloat(item[2]),
