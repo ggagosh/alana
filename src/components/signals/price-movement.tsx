@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Signal } from "@/types/signals";
 import { useBinanceData } from "@/hooks/useBinanceData";
-import CryptoPrice from "./CryptoPrice";
+import CryptoPrice from "./crypto-price";
 
 interface PriceMovementProps {
   signal: Signal;

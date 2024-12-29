@@ -2,15 +2,15 @@ import { notFound } from "next/navigation";
 import { db } from "@/db/drizzle";
 import { eq, and } from "drizzle-orm";
 import { signals } from "@/db/schema";
-import { SignalDetails } from "@/components/signals/SignalDetails";
-import { SignalActions } from "@/components/signals/SignalActions";
-import { PriceMovementWrapper } from "@/components/signals/PriceMovementWrapper";
-import { PriceHistoryChart } from "@/components/signals/PriceHistoryChart";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
+import { SignalActions } from "@/components/signals/signal-actions";
+import { SignalDetails } from "@/components/signals/signal-details";
+import { PriceHistoryChart } from "@/components/signals/price-history-chart";
+import { PriceMovementWrapper } from "@/components/signals/price-movement-wrapper";
 
 interface SignalPageProps {
   params: Promise<{

@@ -1,5 +1,5 @@
 import { Signal } from "@/types/signals";
-import { PriceMovement } from "./PriceMovement";
+import { PriceMovement } from "./price-movement";
 
 function calculatePercentage(price: number, currentPrice: number) {
   if (currentPrice === 0) return "0.00";

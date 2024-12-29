@@ -13,7 +13,7 @@ import {
 } from "@tanstack/react-table";
 import { useState } from "react";
 import { TableHeader, TableRow, TableHead, TableBody, TableCell, Table } from "@/components/ui/table";
-import { SignalTableToolbar } from "./SignalTableToolbar";
+import { SignalTableToolbar } from "./signal-table-toolbar";
 
 interface SignalsTableProps {
     signals: Signal[];

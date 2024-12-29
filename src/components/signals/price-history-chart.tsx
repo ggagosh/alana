@@ -1,6 +1,6 @@
 import { type Signal } from "@/types/signals";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClientChart } from "./ClientChart";
+import { ClientChart } from "./client-chart";
 
 interface PriceHistoryChartProps {
   signal: Signal;

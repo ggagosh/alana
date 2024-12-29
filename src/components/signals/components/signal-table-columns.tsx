@@ -2,9 +2,9 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Signal } from "@/types/signals";
-import { SignalTableCell } from "./SignalTableCell";
-import { SignalTableColumnHeader } from "./SignalTableHeader";
-import { SignalTableRowActions } from "./SignalTableRowActions";
+import { SignalTableColumnHeader } from "./signal-table-header";
+import { SignalTableRowActions } from "./signal-table-row-actions";
+import { SignalTableCell } from "./signal-table-cell";
 
 export const columns: ColumnDef<Signal>[] = [
     {

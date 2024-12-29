@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 import { db } from "@/db/drizzle";
-import { QuickAdd } from "@/components/signals/QuickAdd";
-import { deleteSignal, addSignalAndRevalidate } from "./actions";
+import { QuickAdd } from "@/components/signals/quick-add";
+import { addSignalAndRevalidate } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getUserOrThrow } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { signals } from "@/db/schema";
-import { SignalTable } from "@/components/signals/components/SignalTable";
-import { columns } from "@/components/signals/components/SignalTableColumns";
+import { SignalTable } from "@/components/signals/components/signal-table";
+import { columns } from "@/components/signals/components/signal-table-columns";
 
 async function SignalsData() {
   const user = await getUserOrThrow();
@@ -38,7 +38,6 @@ async function SignalsData() {
         </div>
         <SignalTable
           signals={signalsData}
-          onDeleteSignal={deleteSignal}
           columns={columns}
         />
       </div>

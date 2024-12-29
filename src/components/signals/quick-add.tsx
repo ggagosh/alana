@@ -8,9 +8,9 @@ import { parsedSignalSchema, type Signal } from '@/lib/schema';
 import { Textarea } from '../ui/textarea';
 import { Alert, AlertDescription } from '../ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import { ParsedSignalsPreview } from './ParsedSignalsPreview';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
+import { ParsedSignalsPreview } from './parsed-signals-preview';
 
 interface QuickAddProps {
   onSubmit: (data: Signal) => Promise<Signal[]>;

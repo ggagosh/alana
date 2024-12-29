@@ -4,7 +4,7 @@ import { Signal } from "@/types/signals";
 import { formatDistance } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import CryptoPrice from "@/components/signals/CryptoPrice";
+import CryptoPrice from "@/components/signals/crypto-price";
 import {
     ArrowUp,
     ArrowDown

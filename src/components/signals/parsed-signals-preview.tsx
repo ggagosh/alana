@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { formatDistance } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Signal } from "@/lib/schema";
-import CryptoPrice from "./CryptoPrice";
+import CryptoPrice from "./crypto-price";
 
 interface ParsedSignalsPreviewProps {
   signals: Partial<Signal>[];

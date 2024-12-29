@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Signal } from "@/types/signals";
 import { calculatePriceChange } from "@/lib/utils";
-import CryptoPrice from "./CryptoPrice";
+import CryptoPrice from "./crypto-price";
 
 interface SignalDetailsProps {
   signal: Signal;

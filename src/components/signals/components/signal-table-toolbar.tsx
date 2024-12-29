@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useEffect } from "react";
-import { SignalTableFacetedFilter } from "./SignalTableFacetedFilter";
+import { SignalTableFacetedFilter } from "./signal-table-faceted-filter";
 
 interface SignalsTableToolbarProps<TData> {
   table: Table<TData>;

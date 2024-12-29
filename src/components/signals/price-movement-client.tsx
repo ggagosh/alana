@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Signal } from "@/types/signals";
 import { useBinanceData } from "@/hooks/useBinanceData";
-import { PriceMovement } from "./PriceMovement";
+import { PriceMovement } from "./price-movement";
 
 interface PriceMovementClientProps {
   signal: Signal;
