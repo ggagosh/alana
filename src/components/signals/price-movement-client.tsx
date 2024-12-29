@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Signal } from "@/types/signals";
-import { useBinanceData } from "@/hooks/useBinanceData";
+import { useCoinData } from "@/hooks/use-coin-data";
 import { PriceMovement } from "./price-movement";
 
 interface PriceMovementClientProps {
@@ -11,8 +11,8 @@ interface PriceMovementClientProps {
 
 export function PriceMovementClient({ signal }: PriceMovementClientProps) {
   const [isClient, setIsClient] = useState(false);
-  const { data: cryptoData } = useBinanceData([signal.coinPair], "1m", 1);
-  const currentPrice = cryptoData[cryptoData.length - 1]?.close || signal.currentPrice || 0;
+  const { coinData } = useCoinData(signal.coinPair);
+  const currentPrice = coinData?.currentPrice || signal.currentPrice || 0;
 
   // After hydration, mark as client-side
   useEffect(() => {

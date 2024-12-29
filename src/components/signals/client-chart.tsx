@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { createChart, ColorType, UTCTimestamp, ChartOptions, DeepPartial, ISeriesApi } from 'lightweight-charts';
-import { useBinanceData } from "@/hooks/useBinanceData";
+import { useCoinData } from "@/hooks/use-coin-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "next-themes";
 
@@ -14,12 +14,21 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<ReturnType<typeof createChart>>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick">>(null);
-  const { data: cryptoData, loading, error } = useBinanceData([symbol], "1h", 1000);
+  const { coinData, error, isInitialized } = useCoinData(symbol);
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
 
+  // Chart initialization effect
   useEffect(() => {
-    if (!chartContainerRef.current || !cryptoData.length) return;
+    // Early return if no container or no data
+    if (!chartContainerRef.current) return;
+    if (!coinData?.historicalData?.length) return;
+
+    // Cleanup previous chart instance
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+    }
 
     const chartOptions: DeepPartial<ChartOptions> = {
       layout: {
@@ -81,107 +90,108 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
       height: 400,
     };
 
-    // Initialize chart
-    const chart = createChart(chartContainerRef.current, chartOptions);
-    chartRef.current = chart;
+    try {
+      // Initialize chart
+      const chart = createChart(chartContainerRef.current, chartOptions);
+      chartRef.current = chart;
 
-    // Add series
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#22c55e',
-      downColor: '#ef4444',
-      borderVisible: false,
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
-      priceFormat: {
-        type: 'price',
-        precision: 8,
-        minMove: 0.00000001,
-      },
-    });
-    candlestickSeriesRef.current = candlestickSeries;
+      // Add series
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#22c55e',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#22c55e',
+        wickDownColor: '#ef4444',
+        priceFormat: {
+          type: 'price',
+          precision: 8,
+          minMove: 0.00000001,
+        },
+      });
+      candlestickSeriesRef.current = candlestickSeries;
 
-    // Set initial data
-    const initialData = cryptoData.map((d) => ({
-      time: (d.timestamp / 1000) as UTCTimestamp,
-      open: d.open,
-      high: d.high,
-      low: d.low,
-      close: d.close,
-    }));
+      // Update data
+      const chartData = coinData.historicalData.map((d) => ({
+        time: (d.timestamp / 1000) as UTCTimestamp,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }));
 
-    candlestickSeries.setData(initialData);
+      candlestickSeries.setData(chartData);
 
-    // Configure visible range
-    const visibleLogicalRange = {
-      from: Math.max(0, initialData.length - 100), // Show last 100 candles
-      to: initialData.length,
-    };
-    chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
+      // Configure visible range
+      const visibleLogicalRange = {
+        from: Math.max(0, chartData.length - 100),
+        to: chartData.length,
+      };
+      chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
 
-    // Setup resize handler
-    const handleResize = () => {
-      const { width } = chartContainerRef.current?.getBoundingClientRect() || { width: 0 };
-      if (width > 0 && chartRef.current) {
-        chartRef.current.applyOptions({
-          width,
-          height: 400,
-        });
-        chartRef.current.timeScale().setVisibleLogicalRange(visibleLogicalRange);
-      }
-    };
+      // Handle resize
+      const handleResize = () => {
+        if (chartContainerRef.current && chartRef.current) {
+          chartRef.current.applyOptions({ 
+            width: chartContainerRef.current.clientWidth 
+          });
+        }
+      };
 
-    // Initial resize
-    handleResize();
+      window.addEventListener('resize', handleResize);
 
-    // Add resize listener
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(chartContainerRef.current);
+      // Cleanup
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (chartRef.current) {
+          chartRef.current.remove();
+          chartRef.current = null;
+        }
+      };
+    } catch (err) {
+      console.error('Error initializing chart:', err);
+    }
+  }, [isDarkTheme, coinData?.historicalData]);
 
-    return () => {
-      resizeObserver.disconnect();
-      if (chartRef.current) {
-        chartRef.current.remove();
-      }
-    };
-  }, [cryptoData.length > 0, isDarkTheme, cryptoData]);
-
-  // Handle real-time updates
+  // Real-time updates effect
   useEffect(() => {
-    if (!candlestickSeriesRef.current || !cryptoData.length) return;
+    if (!candlestickSeriesRef.current) return;
+    if (!coinData?.historicalData?.length) return;
 
-    const lastData = cryptoData[cryptoData.length - 1];
-    const update = {
-      time: (lastData.timestamp / 1000) as UTCTimestamp,
-      open: lastData.open,
-      high: lastData.high,
-      low: lastData.low,
-      close: lastData.close,
-    };
+    try {
+      const lastData = coinData.historicalData[coinData.historicalData.length - 1];
+      if (!lastData) return;
 
-    candlestickSeriesRef.current.update(update);
-  }, [cryptoData]);
+      const update = {
+        time: (lastData.timestamp / 1000) as UTCTimestamp,
+        open: lastData.open,
+        high: lastData.high,
+        low: lastData.low,
+        close: lastData.close,
+      };
 
-  if (loading && !cryptoData.length) {
-    return <Skeleton className="w-full h-[400px]" />;
+      candlestickSeriesRef.current.update(update);
+    } catch (err) {
+      console.error('Error updating chart:', err);
+    }
+  }, [coinData?.historicalData]);
+
+  if (!isInitialized || !coinData?.historicalData?.length) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center">
+        <Skeleton className="w-full h-full" />
+      </div>
+    );
   }
 
-  // Show chart even if there's an error but we have data
-  if (error && !cryptoData.length) {
+  if (error) {
     return (
-      <div className="w-full h-[400px] flex items-center justify-center text-red-500">
-        Failed to load chart data. Retrying...
+      <div className="w-full h-[400px] flex items-center justify-center text-destructive">
+        Error loading chart data
       </div>
     );
   }
 
   return (
-    <div className="w-full h-[400px] relative">
-      <div ref={chartContainerRef} className="absolute inset-0" />
-      {error && (
-        <div className="absolute top-2 right-2 px-2 py-1 bg-red-500 text-white text-xs rounded">
-          Connection error. Reconnecting...
-        </div>
-      )}
-    </div>
+    <div ref={chartContainerRef} className="w-full h-[400px] relative" />
   );
 }
