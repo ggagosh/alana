@@ -11,12 +11,10 @@ import { SignalTableFacetedFilter } from "./SignalTableFacetedFilter";
 
 interface SignalsTableToolbarProps<TData> {
   table: Table<TData>;
-  coins: string[];
 }
 
 export function SignalTableToolbar<TData>({
   table,
-  coins,
 }: SignalsTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0;
 

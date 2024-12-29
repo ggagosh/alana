@@ -9,16 +9,7 @@ import {
     ArrowUp,
     ArrowDown
 } from "lucide-react"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { ExternalLink, Copy, MoreHorizontal, Trash2,  } from "lucide-react";
-import Link from "next/link";
+
 import { Progress } from "@/components/ui/progress";
 import { usePriceStore } from "@/stores/priceStore";
 import { Row } from "@tanstack/react-table";

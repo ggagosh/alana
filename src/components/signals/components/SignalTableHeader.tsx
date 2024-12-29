@@ -1,13 +1,12 @@
 import { Column } from "@tanstack/react-table"
-import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator
+  DropdownMenuItem
 } from "@/components/ui/dropdown-menu"
 
 interface DataTableColumnHeaderProps<TData, TValue>

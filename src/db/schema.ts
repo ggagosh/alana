@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real, serial, boolean, timestamp, uuid, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, real, serial, boolean, timestamp, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { authUsers } from "drizzle-orm/supabase"
 
@@ -14,7 +14,7 @@ export const signals = pgTable("signals", {
     currentPrice: real("current_price").notNull(),
     stopLoss: real("stop_loss").notNull(),
     dateShared: timestamp("date_shared", { mode: "date" }).notNull(),
-}, (table) => ([]));
+}, () => ([]));
 
 export const takeProfits = pgTable("take_profits", {
     id: serial("id").primaryKey(),
@@ -23,7 +23,7 @@ export const takeProfits = pgTable("take_profits", {
     price: real("price").notNull(),
     hit: boolean("hit").notNull().default(false),
     hitDate: timestamp("hit_date", { mode: "date" }),
-}, (table) => ([]));
+}, () => ([]));
 
 export const signalsRelations = relations(signals, ({ many }) => ({
     takeProfits: many(takeProfits),

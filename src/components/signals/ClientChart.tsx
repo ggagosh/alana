@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { createChart, ColorType, UTCTimestamp, ChartOptions, DeepPartial, ISeriesApi, CandlestickData } from 'lightweight-charts';
+import { createChart, ColorType, UTCTimestamp, ChartOptions, DeepPartial, ISeriesApi } from 'lightweight-charts';
 import { useBinanceData } from "@/hooks/useBinanceData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "next-themes";

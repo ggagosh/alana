@@ -61,6 +61,7 @@ If you can't parse the signal or any required data is missing, respond with an e
 
     return result.toTextStreamResponse();
   } catch (error) {
+    console.error('Failed to parse signal:', error);
     return new Response(
       JSON.stringify({ error: 'Failed to parse signal' }),
       { status: 500 }

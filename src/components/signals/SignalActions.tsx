@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Signal } from "@/types/signals";
-import { deleteSignal, updateSignal } from "@/app/actions";
-import { Pencil, Trash2, XCircle } from "lucide-react";
+import { deleteSignal } from "@/app/actions";
+import { Trash2 } from "lucide-react";
 
 interface SignalActionsProps {
   signal: Signal;
