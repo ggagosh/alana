@@ -16,13 +16,25 @@ export function useCoinData(symbol: string): UseCoinDataReturn {
     if (!symbol) return;
     
     const initialize = async () => {
-      if (!initializeRef.current) {
-        initializeRef.current = true;
-        await initializeCoin(symbol);
+      try {
+        if (!initializeRef.current) {
+          initializeRef.current = true;
+          
+          await initializeCoin(symbol);
+        }
+      } catch (err) {
+        console.error('Failed to initialize coin data:', err);
       }
     };
 
     initialize();
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (initializeRef.current) {
+        useCoinStore.getState().unsubscribeFromSymbol(symbol);
+      }
+    };
   }, [symbol, initializeCoin]);
 
   const coinData = getCoinData(symbol);

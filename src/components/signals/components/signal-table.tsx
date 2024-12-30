@@ -11,22 +11,66 @@ import {
     getFilteredRowModel,
     ColumnDef,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TableHeader, TableRow, TableHead, TableBody, TableCell, Table } from "@/components/ui/table";
 import { SignalTableToolbar } from "./signal-table-toolbar";
+import { useCoinStore } from "@/stores/coin-store";
 
 interface SignalsTableProps {
     signals: Signal[];
     columns: ColumnDef<Signal>[];
 }
 
-
 export function SignalTable({
-    signals,
+    signals: initialSignals,
     columns,
 }: SignalsTableProps) {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [signals, setSignals] = useState<Signal[]>(initialSignals);
+
+    // Initialize coins
+    useEffect(() => {
+        const uniqueCoins = [...new Set(initialSignals.map(signal => signal.coinPair))];
+        const { initializeCoin } = useCoinStore.getState();
+        
+        // Initialize all coins
+        uniqueCoins.forEach(coin => {
+            initializeCoin(coin);
+        });
+    }, [initialSignals]);
+
+    // Subscribe to coin store updates
+    useEffect(() => {
+        const unsubscribe = useCoinStore.subscribe(
+            (state) => {
+                setSignals(prevSignals => 
+                    prevSignals.map(signal => {
+                        const coinData = state.coins[signal.coinPair];
+                        if (!coinData?.currentPrice) return signal;
+                        if (coinData.currentPrice === signal.currentPrice) return signal;
+
+                        return {
+                            ...signal,
+                            currentPrice: coinData.currentPrice,
+                            lastPriceUpdate: new Date(),
+                            takeProfits: signal.takeProfits.map(tp => ({
+                                ...tp,
+                                hit: tp.hit || coinData.currentPrice >= tp.price,
+                                hitDate: tp.hit ? tp.hitDate : 
+                                    (coinData.currentPrice >= tp.price ? new Date() : null)
+                            })),
+                            isActive: coinData.currentPrice <= signal.stopLoss ? false : signal.isActive
+                        };
+                    })
+                );
+            }
+        );
+
+        return () => {
+            unsubscribe();
+        };
+    }, [signals]);
 
     const table = useReactTable({
         data: signals,

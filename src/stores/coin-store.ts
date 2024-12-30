@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { CoinData, CoinDataMap, KLineData } from '@/types/binance';
+import { wsManager } from '@/lib/websocket-manager';
+import { WsTradeMessage } from '@/types/websocket';
 
 interface CoinState {
   coins: CoinDataMap;
-  activeWebSocket: WebSocket | null;
   isConnecting: boolean;
   error: Error | null;
-  
+
   // Actions
   initializeCoin: (symbol: string) => Promise<void>;
   updateCoinPrice: (symbol: string, price: number) => void;
@@ -15,110 +16,153 @@ interface CoinState {
   subscribeToSymbol: (symbol: string) => void;
   unsubscribeFromSymbol: (symbol: string) => void;
   setError: (error: Error | null) => void;
-  
+
   // Selectors
   getCoinData: (symbol: string) => CoinData | null;
   getSubscribedSymbols: () => string[];
 }
 
-const BINANCE_WS_URL = 'wss://stream.binance.com:9443/ws';
 const BINANCE_REST_URL = 'https://api.binance.com/api/v3';
+const CANDLE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+function createNewCandle(time: number, price: number): KLineData {
+  return {
+    openTime: time,
+    open: price,
+    high: price,
+    low: price,
+    close: price,
+    volume: 0,
+    closeTime: time + CANDLE_INTERVAL - 1,
+  };
+}
+
+function updateCandle(candle: KLineData, price: number): KLineData {
+  return {
+    ...candle,
+    high: Math.max(candle.high, price),
+    low: Math.min(candle.low, price),
+    close: price,
+  };
+}
 
 export const useCoinStore = create<CoinState>()(
   devtools(
     (set, get) => ({
       coins: {},
-      activeWebSocket: null,
       isConnecting: false,
       error: null,
 
       initializeCoin: async (symbol: string) => {
         try {
           const state = get();
-          // Check if coin already exists and is initialized
           if (state.coins[symbol]?.historicalData?.length > 0) return;
-
-          // Check if we're already fetching this coin
           if (state.coins[symbol]?.isInitializing) return;
 
-          // Mark as initializing
+          const initialCoin: CoinData = {
+            symbol,
+            historicalData: [],
+            currentPrice: 0,
+            isInitializing: true,
+          };
+
           set((state) => ({
             coins: {
               ...state.coins,
-              [symbol]: {
-                symbol,
-                historicalData: [],
-                currentPrice: 0,
-                previousPrice: 0,
-                isSubscribed: false,
-                isInitializing: true,
-                lastUpdated: Date.now(),
-              },
+              [symbol]: initialCoin,
             },
           }));
 
           // Fetch historical data
           const response = await fetch(
-            `${BINANCE_REST_URL}/klines?symbol=${symbol}&interval=1m&limit=1000`
+            `${BINANCE_REST_URL}/klines?symbol=${symbol.toUpperCase()}&interval=1d&limit=30`
           );
 
           if (!response.ok) {
-            throw new Error(`Failed to fetch historical data for ${symbol}`);
+            throw new Error(`Failed to fetch historical data: ${response.statusText}`);
           }
 
-          const rawData = await response.json();
-          const historicalData: KLineData[] = rawData.map((item: string[]) => ({
-            timestamp: parseInt(item[0]),
+          const data = await response.json();
+          const historicalData: KLineData[] = data.map((item: [number, string, string, string, string, string, number]) => ({
+            openTime: item[0],
             open: parseFloat(item[1]),
             high: parseFloat(item[2]),
             low: parseFloat(item[3]),
             close: parseFloat(item[4]),
             volume: parseFloat(item[5]),
+            closeTime: item[6],
           }));
 
-          // Update coin data
+          const lastCandle = historicalData[historicalData.length - 1];
+          const currentTime = Date.now();
+          const currentCandle = createNewCandle(
+            Math.floor(currentTime / CANDLE_INTERVAL) * CANDLE_INTERVAL,
+            lastCandle?.close || 0
+          );
+
+          const updatedCoin: CoinData = {
+            symbol,
+            historicalData,
+            currentPrice: lastCandle?.close || 0,
+            currentCandle,
+            isInitializing: false,
+          };
+
           set((state) => ({
             coins: {
               ...state.coins,
-              [symbol]: {
-                ...state.coins[symbol],
-                historicalData,
-                currentPrice: historicalData[historicalData.length - 1]?.close || 0,
-                previousPrice: historicalData[historicalData.length - 2]?.close || 0,
-                isInitializing: false,
-              },
+              [symbol]: updatedCoin,
             },
           }));
 
           // Subscribe to real-time updates
           get().subscribeToSymbol(symbol);
         } catch (error) {
-          // Clear initializing state on error
+          const errorCoin: CoinData = {
+            symbol,
+            historicalData: [],
+            currentPrice: 0,
+            isInitializing: false,
+          };
+
           set((state) => ({
+            error: error instanceof Error ? error : new Error('Unknown error occurred'),
             coins: {
               ...state.coins,
-              [symbol]: {
-                ...state.coins[symbol],
-                isInitializing: false,
-              },
+              [symbol]: errorCoin,
             },
           }));
-          get().setError(error instanceof Error ? error : new Error('Failed to initialize coin'));
         }
       },
 
       updateCoinPrice: (symbol: string, price: number) => {
-        set((state) => ({
-          coins: {
-            ...state.coins,
-            [symbol]: {
-              ...state.coins[symbol],
-              previousPrice: state.coins[symbol]?.currentPrice || price,
-              currentPrice: price,
-              lastUpdated: Date.now(),
+        set((state) => {
+          const coin = state.coins[symbol];
+          if (!coin) return state;
+
+          const currentTime = Date.now();
+          const candleStartTime = Math.floor(currentTime / CANDLE_INTERVAL) * CANDLE_INTERVAL;
+
+          let currentCandle = coin.currentCandle;
+          
+          // Create new candle if needed
+          if (!currentCandle || currentTime >= currentCandle.closeTime) {
+            currentCandle = createNewCandle(candleStartTime, price);
+          } else {
+            currentCandle = updateCandle(currentCandle, price);
+          }
+
+          return {
+            coins: {
+              ...state.coins,
+              [symbol]: {
+                ...coin,
+                currentPrice: price,
+                currentCandle,
+              },
             },
-          },
-        }));
+          };
+        });
       },
 
       updateHistoricalData: (symbol: string, data: KLineData[]) => {
@@ -134,106 +178,25 @@ export const useCoinStore = create<CoinState>()(
       },
 
       subscribeToSymbol: (symbol: string) => {
-        const state = get();
-        if (!symbol || state.coins[symbol]?.isSubscribed) return;
-
-        let ws = state.activeWebSocket;
-        
-        // Create WebSocket if it doesn't exist
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          ws = new WebSocket(BINANCE_WS_URL);
-          set({ activeWebSocket: ws, isConnecting: true });
-
-          ws.onopen = () => {
-            set({ isConnecting: false });
-            // Subscribe to all coins that should be subscribed
-            const symbols = get().getSubscribedSymbols();
-            symbols.forEach((sym) => {
-              ws?.send(JSON.stringify({
-                method: 'SUBSCRIBE',
-                params: [`${sym.toLowerCase()}@kline_1m`],
-                id: Date.now(),
-              }));
-            });
-          };
-
-          ws.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.k) {
-                const { s: sym, k: kline } = data;
-                if (sym && kline) {
-                  get().updateCoinPrice(sym, parseFloat(kline.c));
-                }
-              }
-            } catch (error) {
-              console.error('WebSocket message error:', error);
-            }
-          };
-
-          ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            set({ error: new Error('WebSocket connection error') });
-          };
-
-          ws.onclose = () => {
-            set({ activeWebSocket: null });
-            // Attempt to reconnect after a delay
-            setTimeout(() => get().subscribeToSymbol(symbol), 5000);
-          };
-        }
-
-        // Subscribe to the symbol
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            method: 'SUBSCRIBE',
-            params: [`${symbol.toLowerCase()}@kline_1m`],
-            id: Date.now(),
-          }));
-        }
-
-        // Update subscription status
-        set((state) => ({
-          coins: {
-            ...state.coins,
-            [symbol]: {
-              ...state.coins[symbol],
-              isSubscribed: true,
-            },
-          },
-        }));
+        const channel = `${symbol.toLowerCase()}@trade`;
+        wsManager.subscribe(channel, (data) => {
+          if ('p' in data && data.e === 'trade') {
+            const tradeData = data as WsTradeMessage;
+            get().updateCoinPrice(symbol, parseFloat(tradeData.p));
+          }
+        });
       },
 
       unsubscribeFromSymbol: (symbol: string) => {
-        const { activeWebSocket: ws } = get();
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            method: 'UNSUBSCRIBE',
-            params: [`${symbol.toLowerCase()}@kline_1m`],
-            id: Date.now(),
-          }));
-        }
-
-        set((state) => ({
-          coins: {
-            ...state.coins,
-            [symbol]: {
-              ...state.coins[symbol],
-              isSubscribed: false,
-            },
-          },
-        }));
+        const channel = `${symbol.toLowerCase()}@trade`;
+        wsManager.unsubscribe(channel, () => { });
       },
 
       setError: (error: Error | null) => set({ error }),
 
       getCoinData: (symbol: string) => get().coins[symbol] || null,
 
-      getSubscribedSymbols: () => {
-        return Object.entries(get().coins)
-          .filter(([_, data]) => data.isSubscribed)
-          .map(([symbol]) => symbol);
-      },
+      getSubscribedSymbols: () => Object.keys(get().coins),
     }),
     {
       name: 'coin-store',

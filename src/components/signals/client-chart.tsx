@@ -5,9 +5,20 @@ import { createChart, ColorType, UTCTimestamp, ChartOptions, DeepPartial, ISerie
 import { useCoinData } from "@/hooks/use-coin-data";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "next-themes";
+import { KLineData } from "@/types/binance";
 
 interface ClientChartProps {
   symbol?: string;
+}
+
+function candleToChartData(candle: KLineData) {
+  return {
+    time: (candle.openTime / 1000) as UTCTimestamp,
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+  };
 }
 
 export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
@@ -111,19 +122,23 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
       candlestickSeriesRef.current = candlestickSeries;
 
       // Update data
-      const chartData = coinData.historicalData.map((d) => ({
-        time: (d.timestamp / 1000) as UTCTimestamp,
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-      }));
+      const chartData = [...coinData.historicalData]
+        .filter(candle => {
+          // Filter out any historical candles that overlap with current candle
+          return !coinData.currentCandle || candle.openTime < coinData.currentCandle.openTime;
+        })
+        .map(candleToChartData);
+
+      // Add current candle if available
+      if (coinData.currentCandle) {
+        chartData.push(candleToChartData(coinData.currentCandle));
+      }
 
       candlestickSeries.setData(chartData);
 
       // Configure visible range
       const visibleLogicalRange = {
-        from: Math.max(0, chartData.length - 100),
+        from: Math.max(0, chartData.length - 30),
         to: chartData.length,
       };
       chart.timeScale().setVisibleLogicalRange(visibleLogicalRange);
@@ -150,48 +165,32 @@ export function ClientChart({ symbol = "BTCUSDT" }: ClientChartProps) {
     } catch (err) {
       console.error('Error initializing chart:', err);
     }
-  }, [isDarkTheme, coinData?.historicalData]);
+  }, [coinData?.historicalData, coinData?.currentCandle, isDarkTheme]);
 
-  // Real-time updates effect
+  // Update current candle effect
   useEffect(() => {
-    if (!candlestickSeriesRef.current) return;
-    if (!coinData?.historicalData?.length) return;
-
-    try {
-      const lastData = coinData.historicalData[coinData.historicalData.length - 1];
-      if (!lastData) return;
-
-      const update = {
-        time: (lastData.timestamp / 1000) as UTCTimestamp,
-        open: lastData.open,
-        high: lastData.high,
-        low: lastData.low,
-        close: lastData.close,
-      };
-
-      candlestickSeriesRef.current.update(update);
-    } catch (err) {
-      console.error('Error updating chart:', err);
-    }
-  }, [coinData?.historicalData]);
-
-  if (!isInitialized || !coinData?.historicalData?.length) {
-    return (
-      <div className="w-full h-[400px] flex items-center justify-center">
-        <Skeleton className="w-full h-full" />
-      </div>
-    );
-  }
+    if (!candlestickSeriesRef.current || !coinData?.currentCandle) return;
+    candlestickSeriesRef.current.update(candleToChartData(coinData.currentCandle));
+  }, [coinData?.currentCandle]);
 
   if (error) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center text-destructive">
-        Error loading chart data
+        Error loading chart: {error.message}
       </div>
     );
   }
 
+  if (!isInitialized) {
+    return (
+      <Skeleton className="w-full h-[400px]" />
+    );
+  }
+
   return (
-    <div ref={chartContainerRef} className="w-full h-[400px] relative" />
+    <div
+      ref={chartContainerRef}
+      className="w-full h-[400px]"
+    />
   );
 }

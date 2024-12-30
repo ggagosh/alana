@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 
 import { Progress } from "@/components/ui/progress";
-import { usePriceStore } from "@/stores/priceStore";
+import { useCoinStore } from "@/stores/coin-store";
 import { Row } from "@tanstack/react-table";
 
 
@@ -30,9 +30,12 @@ export function SignalTableCell({
   row,
     type
 }: SignalTableCellProps) {
-  const currentPrice = usePriceStore(state => state.getPriceBySymbol(row.original.coinPair));
-  const previousPrice = usePriceStore(state => state.getPreviousPriceBySymbol(row.original.coinPair));
-  
+  const coinData = useCoinStore(state => state.getCoinData(row.original.coinPair));
+  const currentPrice = coinData?.currentPrice;
+  const previousCandle = coinData?.currentCandle 
+    ? { price: coinData.currentCandle.close } 
+    : null;
+
   switch (type) {
     case "pair": {
         const current = row.getValue("currentPrice") as number;
@@ -76,8 +79,8 @@ export function SignalTableCell({
         ? ((currentPrice - signal.entryLow) / signal.entryLow) * 100
         : ((signal.currentPrice - signal.entryLow) / signal.entryLow) * 100;
   
-      const priceMovement = previousPrice
-        ? currentPrice && currentPrice > previousPrice ? 'up' : 'down'
+      const priceMovement = previousCandle
+        ? currentPrice && currentPrice > previousCandle.price ? 'up' : 'down'
         : 'neutral';
   
       return (
