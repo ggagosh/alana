@@ -6,6 +6,7 @@ import { SignalTableColumnHeader } from "./signal-table-header";
 import { SignalTableRowActions } from "./signal-table-row-actions";
 import { SignalTableCell } from "./signal-table-cell";
 
+// Visual columns for the table
 export const columns: ColumnDef<Signal>[] = [
     {
         accessorKey: "coinPair",
@@ -77,59 +78,6 @@ export const columns: ColumnDef<Signal>[] = [
         maxSize: 100,
     },
     {
-        id: "signal_status_filter",
-        filterFn: (row, id, value: string[]) => {
-            if (!value?.length) return true;
-            const status = getSignalStatus(row.original);
-            return value.includes(status);
-        }
-    },
-    {
-        id: "tp_status_filter",
-        filterFn: (row, id, value: string[]) => {
-            if (!value?.length) return true;
-            const current = row.original.currentPrice;
-            const entryLow = row.original.entryLow;
-            const entryHigh = row.original.entryHigh;
-            const isInRange = current >= entryLow && current <= entryHigh;
-
-            const tps = row.original.takeProfits;
-            const currentLevel = tps?.findIndex(tp => tp.price > current) ?? -1;
-            const isAboveAll = currentLevel === -1;
-            const isBelowAll = currentLevel === 0;
-
-            const sl = row.original.stopLoss;
-            const distance = ((current - sl) / current) * 100;
-            const isNearStop = Math.abs(distance) < 5;
-            const isBelowSL = current < sl;
-
-            return value.some((status) => {
-                switch (status) {
-                    case "in_range":
-                        return isInRange;
-                    case "above_all_tp":
-                        return isAboveAll;
-                    case "below_all_tp":
-                        return isBelowAll;
-                    case "near_stop":
-                        return isNearStop;
-                    case "below_stop_loss":
-                        return isBelowSL;
-                    default:
-                        return false;
-                }
-            });
-        }
-    },
-    {
-        id: "hide_closed_filter",
-        filterFn: (row, id, value) => {
-            if (!value) return true;
-
-            return getSignalStatus(row.original) !== "closed";
-        }
-    },
-    {
         id: "actions",
         size: 100,
         minSize: 100,
@@ -141,6 +89,63 @@ export const columns: ColumnDef<Signal>[] = [
         ),
     },
 ];
+
+// Filter functions for data filtering
+export const filterFunctions = {
+    signalStatus: (signal: Signal, value: string[]) => {
+        if (!value?.length) return true;
+        const status = getSignalStatus(signal);
+        return value.includes(status);
+    },
+
+    tpStatus: (signal: Signal, value: string[]) => {
+        if (!value?.length) return true;
+        const current = signal.currentPrice;
+        const entryLow = signal.entryLow;
+        const entryHigh = signal.entryHigh;
+        const isInRange = current >= entryLow && current <= entryHigh;
+
+        const tps = signal.takeProfits;
+        const currentLevel = tps?.findIndex(tp => tp.price > current) ?? -1;
+        const isAboveAll = currentLevel === -1;
+        const isBelowAll = currentLevel === 0;
+
+        const sl = signal.stopLoss;
+        const distance = ((current - sl) / current) * 100;
+        const isNearStop = Math.abs(distance) < 5;
+        const isBelowSL = current < sl;
+
+        return value.some((status) => {
+            switch (status) {
+                case "in_range":
+                    return isInRange;
+                case "above_all_tp":
+                    return isAboveAll;
+                case "below_all_tp":
+                    return isBelowAll;
+                case "near_stop":
+                    return isNearStop;
+                case "below_stop_loss":
+                    return isBelowSL;
+                default:
+                    return false;
+            }
+        });
+    },
+
+    hideClosed: (signal: Signal, value: boolean) => {
+        if (!value) {
+            return getSignalStatus(signal) === "closed";
+        }
+        
+        return getSignalStatus(signal) !== "closed";
+    },
+
+    searchText: (signal: Signal, value: string) => {
+        if (!value) return true;
+        return signal.coinPair.toLowerCase().includes(value.toLowerCase());
+    }
+};
 
 type SignalStatus = "pre_entry" | "in_entry" | "active" | "closed";
 

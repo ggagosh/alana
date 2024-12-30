@@ -1,55 +1,72 @@
 "use client";
 
-import { Signal } from "@/types/signals";
+import * as React from "react";
 import {
+    ColumnDef,
+    ColumnFiltersState,
+    SortingState,
+    VisibilityState,
     flexRender,
     getCoreRowModel,
-    useReactTable,
-    getSortedRowModel,
-    SortingState,
-    ColumnFiltersState,
+    getFacetedRowModel,
+    getFacetedUniqueValues,
     getFilteredRowModel,
-    ColumnDef,
+    getSortedRowModel,
+    useReactTable,
 } from "@tanstack/react-table";
-import { useEffect, useState } from "react";
-import { TableHeader, TableRow, TableHead, TableBody, TableCell, Table } from "@/components/ui/table";
+
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+
+import { Signal } from "@/types/signals";
+import { filterFunctions } from "./signal-table-columns";
 import { SignalTableToolbar } from "./signal-table-toolbar";
+import { useEffect, useState } from "react";
 import { useCoinStore } from "@/stores/coin-store";
 
-interface SignalsTableProps {
-    signals: Signal[];
+interface SignalTableProps {
+    data: Signal[] | undefined;
     columns: ColumnDef<Signal>[];
 }
 
-export function SignalTable({
-    signals: initialSignals,
-    columns,
-}: SignalsTableProps) {
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-    const [signals, setSignals] = useState<Signal[]>(initialSignals);
+export function SignalTable({ data = [], columns }: SignalTableProps) {
+    const [rowSelection, setRowSelection] = React.useState({});
+    const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+    const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+    const [sorting, setSorting] = React.useState<SortingState>([]);
 
+    // Filter states
+    const [signalStatusFilter, setSignalStatusFilter] = React.useState<string[]>([]);
+    const [tpStatusFilter, setTpStatusFilter] = React.useState<string[]>([]);
+    const [hideClosedFilter, setHideClosedFilter] = React.useState(true);
+    const [searchFilter, setSearchFilter] = React.useState("");
+    const [signals, setSignals] = useState<Signal[]>(data);
+    
     // Initialize coins
     useEffect(() => {
-        const uniqueCoins = [...new Set(initialSignals.map(signal => signal.coinPair))];
+        const uniqueCoins = [...new Set(data.map(signal => signal.coinPair))];
         const { initializeCoin } = useCoinStore.getState();
-
+        
         // Initialize all coins
         uniqueCoins.forEach(coin => {
             initializeCoin(coin);
         });
-    }, [initialSignals]);
-
-    // Subscribe to coin store updates
+    }, [data]);
+    
     useEffect(() => {
         const unsubscribe = useCoinStore.subscribe(
             (state) => {
-                setSignals(prevSignals =>
+                setSignals(prevSignals => 
                     prevSignals.map(signal => {
                         const coinData = state.coins[signal.coinPair];
                         if (!coinData?.currentPrice) return signal;
                         if (coinData.currentPrice === signal.currentPrice) return signal;
-
                         return {
                             ...signal,
                             currentPrice: coinData.currentPrice,
@@ -57,7 +74,7 @@ export function SignalTable({
                             takeProfits: signal.takeProfits.map(tp => ({
                                 ...tp,
                                 hit: tp.hit || coinData.currentPrice >= tp.price,
-                                hitDate: tp.hit ? tp.hitDate :
+                                hitDate: tp.hit ? tp.hitDate : 
                                     (coinData.currentPrice >= tp.price ? new Date() : null)
                             })),
                             isActive: coinData.currentPrice <= signal.stopLoss ? false : signal.isActive
@@ -66,35 +83,65 @@ export function SignalTable({
                 );
             }
         );
-
         return () => {
             unsubscribe();
         };
     }, [signals]);
 
+    // Apply all filters to the data
+    const filteredData = React.useMemo(() => {
+        if (!data) return [];
+
+        return data.filter(signal =>
+            filterFunctions.signalStatus(signal, signalStatusFilter) &&
+            filterFunctions.tpStatus(signal, tpStatusFilter) &&
+            filterFunctions.hideClosed(signal, hideClosedFilter) &&
+            filterFunctions.searchText(signal, searchFilter)
+        );
+    }, [data, signalStatusFilter, tpStatusFilter, hideClosedFilter, searchFilter]);
+
     const table = useReactTable({
-        data: signals,
+        data: filteredData,
         columns,
-        getCoreRowModel: getCoreRowModel(),
-        onSortingChange: setSorting,
-        getSortedRowModel: getSortedRowModel(),
-        onColumnFiltersChange: setColumnFilters,
-        getFilteredRowModel: getFilteredRowModel(),
         state: {
             sorting,
+            columnVisibility,
+            rowSelection,
             columnFilters,
         },
-        defaultColumn: {
-            size: 100,
-            minSize: 100,
-            maxSize: 100,
-        },
+        enableRowSelection: true,
+        onRowSelectionChange: setRowSelection,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        onColumnVisibilityChange: setColumnVisibility,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFacetedRowModel: getFacetedRowModel(),
+        getFacetedUniqueValues: getFacetedUniqueValues(),
     });
+
+    const resetFilters = React.useCallback(() => {
+        setSignalStatusFilter([]);
+        setTpStatusFilter([]);
+        setHideClosedFilter(true);
+        setSearchFilter("");
+    }, []);
 
     return (
         <div className="space-y-4">
-            <SignalTableToolbar table={table} />
-            <div className="rounded-md border overflow-x-auto">
+            <SignalTableToolbar
+                searchFilter={searchFilter}
+                onSearchChange={setSearchFilter}
+                signalStatusFilter={signalStatusFilter}
+                onSignalStatusChange={setSignalStatusFilter}
+                tpStatusFilter={tpStatusFilter}
+                onTpStatusChange={setTpStatusFilter}
+                hideClosedFilter={hideClosedFilter}
+                onHideClosedChange={setHideClosedFilter}
+                onResetFilters={resetFilters}
+            />
+            <div className="rounded-md border">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -104,9 +151,8 @@ export function SignalTable({
                                     return (
                                         <TableHead
                                             key={header.id}
-                                            colSpan={header.colSpan}
                                             style={{ width: `${size}px`, minWidth: `${size}px` }}
-                                            className="whitespace-nowrap"
+                                            className="whitespace-nowrap p-2"
                                         >
                                             {header.isPlaceholder
                                                 ? null
@@ -115,7 +161,7 @@ export function SignalTable({
                                                     header.getContext()
                                                 )}
                                         </TableHead>
-                                    )
+                                    );
                                 })}
                             </TableRow>
                         ))}
@@ -133,14 +179,14 @@ export function SignalTable({
                                             <TableCell
                                                 key={cell.id}
                                                 style={{ width: `${size}px`, minWidth: `${size}px` }}
-                                                className="whitespace-nowrap"
+                                                className="whitespace-nowrap p-2"
                                             >
                                                 {flexRender(
                                                     cell.column.columnDef.cell,
                                                     cell.getContext()
                                                 )}
                                             </TableCell>
-                                        )
+                                        );
                                     })}
                                 </TableRow>
                             ))
@@ -158,5 +204,5 @@ export function SignalTable({
                 </Table>
             </div>
         </div>
-    )
+    );
 }

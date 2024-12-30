@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Column } from "@tanstack/react-table";
-import { Check, PlusCircle } from "lucide-react";
+import { CheckIcon, PlusCircledIcon } from "@radix-ui/react-icons";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,29 +21,32 @@ import {
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 
-interface SignalTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>;
-  title?: string;
-  options: {
-    label: string;
-    value: string;
-    icon?: React.ComponentType<{ className?: string }>;
-  }[];
+interface FilterOption {
+  label: string;
+  value: string;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
-export function SignalTableFacetedFilter<TData, TValue>({
-  column,
+interface SignalTableFacetedFilterProps {
+  title?: string;
+  options: FilterOption[];
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+export function SignalTableFacetedFilter({
   title,
   options,
-}: SignalTableFacetedFilterProps<TData, TValue>) {
-  const facets = column?.getFacetedUniqueValues();
-  const selectedValues = new Set(column?.getFilterValue() as string[]);
+  value,
+  onChange,
+}: SignalTableFacetedFilterProps) {
+  const selectedValues = new Set(value);
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          <PlusCircle className="mr-2 h-4 w-4" />
+          <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
@@ -98,10 +100,7 @@ export function SignalTableFacetedFilter<TData, TValue>({
                       } else {
                         selectedValues.add(option.value);
                       }
-                      const filterValues = Array.from(selectedValues);
-                      column?.setFilterValue(
-                        filterValues.length ? filterValues : undefined
-                      );
+                      onChange(Array.from(selectedValues));
                     }}
                   >
                     <div
@@ -112,17 +111,12 @@ export function SignalTableFacetedFilter<TData, TValue>({
                           : "opacity-50 [&_svg]:invisible"
                       )}
                     >
-                      <Check className={cn("h-4 w-4")} />
+                      <CheckIcon className={cn("h-4 w-4")} />
                     </div>
                     {option.icon && (
                       <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
                     )}
                     <span>{option.label}</span>
-                    {facets?.get(option.value) && (
-                      <span className="ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs">
-                        {facets.get(option.value)}
-                      </span>
-                    )}
                   </CommandItem>
                 );
               })}
@@ -132,7 +126,7 @@ export function SignalTableFacetedFilter<TData, TValue>({
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={() => column?.setFilterValue(undefined)}
+                    onSelect={() => onChange([])}
                     className="justify-center text-center"
                   >
                     Clear filters

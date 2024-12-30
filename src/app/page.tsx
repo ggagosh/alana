@@ -37,7 +37,7 @@ async function SignalsData() {
           <QuickAdd onSubmit={addSignalAndRevalidate} />
         </div>
         <SignalTable
-          signals={signalsData}
+          data={signalsData}
           columns={columns}
         />
       </div>
