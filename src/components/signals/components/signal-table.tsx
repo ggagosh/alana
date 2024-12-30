@@ -33,7 +33,7 @@ export function SignalTable({
     useEffect(() => {
         const uniqueCoins = [...new Set(initialSignals.map(signal => signal.coinPair))];
         const { initializeCoin } = useCoinStore.getState();
-        
+
         // Initialize all coins
         uniqueCoins.forEach(coin => {
             initializeCoin(coin);
@@ -44,7 +44,7 @@ export function SignalTable({
     useEffect(() => {
         const unsubscribe = useCoinStore.subscribe(
             (state) => {
-                setSignals(prevSignals => 
+                setSignals(prevSignals =>
                     prevSignals.map(signal => {
                         const coinData = state.coins[signal.coinPair];
                         if (!coinData?.currentPrice) return signal;
@@ -57,7 +57,7 @@ export function SignalTable({
                             takeProfits: signal.takeProfits.map(tp => ({
                                 ...tp,
                                 hit: tp.hit || coinData.currentPrice >= tp.price,
-                                hitDate: tp.hit ? tp.hitDate : 
+                                hitDate: tp.hit ? tp.hitDate :
                                     (coinData.currentPrice >= tp.price ? new Date() : null)
                             })),
                             isActive: coinData.currentPrice <= signal.stopLoss ? false : signal.isActive
@@ -84,19 +84,30 @@ export function SignalTable({
             sorting,
             columnFilters,
         },
+        defaultColumn: {
+            size: 100,
+            minSize: 100,
+            maxSize: 100,
+        },
     });
 
     return (
         <div className="space-y-4">
             <SignalTableToolbar table={table} />
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
+                                    const size = header.column.getSize();
                                     return (
-                                        <TableHead key={header.id} colSpan={header.colSpan}>
+                                        <TableHead
+                                            key={header.id}
+                                            colSpan={header.colSpan}
+                                            style={{ width: `${size}px`, minWidth: `${size}px` }}
+                                            className="whitespace-nowrap"
+                                        >
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(
@@ -116,14 +127,21 @@ export function SignalTable({
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
                                 >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id}>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
-                                    ))}
+                                    {row.getVisibleCells().map((cell) => {
+                                        const size = cell.column.getSize();
+                                        return (
+                                            <TableCell
+                                                key={cell.id}
+                                                style={{ width: `${size}px`, minWidth: `${size}px` }}
+                                                className="whitespace-nowrap"
+                                            >
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        )
+                                    })}
                                 </TableRow>
                             ))
                         ) : (

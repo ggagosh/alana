@@ -11,6 +11,9 @@ export const columns: ColumnDef<Signal>[] = [
         accessorKey: "coinPair",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Pair" />,
         cell: ({ row }) => <SignalTableCell type="pair" row={row} />,
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
         filterFn: (row, columnId, filterValue) => {
             if (!filterValue) {
                 return true;
@@ -23,26 +26,41 @@ export const columns: ColumnDef<Signal>[] = [
         accessorKey: "entryRange",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Entry" />,
         cell: ({ row }) => <SignalTableCell type="entryRange" row={row} />,
+        size: 140,
+        minSize: 140,
+        maxSize: 140,
     },
     {
         accessorKey: "currentPrice",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Current" />,
         cell: ({ row }) => <SignalTableCell type="currentPrice" row={row} />,
+        size: 140,
+        minSize: 140,
+        maxSize: 140,
     },
     {
         accessorKey: "takeProfits",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Take Profits" />,
         cell: ({ row }) => <SignalTableCell type="takeProfits" row={row} />,
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
     },
     {
         accessorKey: "stopLoss",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Stop Loss" />,
         cell: ({ row }) => <SignalTableCell type="stopLoss" row={row} />,
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
     },
     {
         accessorKey: "dateShared",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Age" />,
         cell: ({ row }) => <SignalTableCell type="dateShared" row={row} />,
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
         filterFn: (row, columnId, columnFilters) => {
             const filterValue = columnFilters.getFilterValue(columnId);
             if (!filterValue) return true;
@@ -54,6 +72,9 @@ export const columns: ColumnDef<Signal>[] = [
         id: "status",
         header: ({ column }) => <SignalTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => <SignalTableCell type="status" row={row} />,
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
     },
     {
         id: "signal_status_filter",
@@ -110,6 +131,9 @@ export const columns: ColumnDef<Signal>[] = [
     },
     {
         id: "actions",
+        size: 100,
+        minSize: 100,
+        maxSize: 100,
         cell: ({ row }) => (
             <SignalTableRowActions
                 row={row}
